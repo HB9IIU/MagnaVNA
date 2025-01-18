@@ -13,14 +13,21 @@ The app first performs a sweep from 1 to 30 MHz to identify the resonant frequen
 ## Demo
 
 Here is a demo video showing how MagnaVNA works:  
+<<<<<<< HEAD
 [![Watch the demo on YouTube](https://img.youtube.com/vi/amZQqX4hNA8/0.jpg)](https://youtu.be/amZQqX4hNA8)
+=======
+[Watch the demo on YouTube](https://youtu.be/amZQqX4hNA8)
+>>>>>>> e98ae5a496957836e782444cc5abcaacffa29986
 
 ## Note
 
 Please don’t be discouraged if it doesn’t work perfectly the first time. Remember, this is a hobby, and we are just experimenting together!
 
+<<<<<<< HEAD
 This app works very well for me using the [ESP32-MLA-Manual-Tuner](https://github.com/HB9IIU/ESP32-MLA-Manual-Tuner).
 
+=======
+>>>>>>> e98ae5a496957836e782444cc5abcaacffa29986
 ## Reporting Issues or Feedback
 
 If you encounter any bugs, issues, or have suggestions for new features, please open an issue on the **Issues** tab of this repository. When reporting a bug, please try to provide the following details:
