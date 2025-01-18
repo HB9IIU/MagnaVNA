@@ -4,10 +4,6 @@
 <dict>
 	<key>files</key>
 	<dict>
-		<key>Resources/CalibrationKit/.DS_Store</key>
-		<data>
-		Lwlo7zEYiFLFsV0FXhI5QEEYeqc=
-		</data>
 		<key>Resources/CalibrationKit/LOAD_cal.s1p</key>
 		<data>
 		VkzJC1Kqtn37uM4gAvNxHt2UyRs=
@@ -22,11 +18,11 @@
 		</data>
 		<key>Resources/MagnaVNA.py</key>
 		<data>
-		ZQ08qE3A+0Bc6mIpuPzh9zt/OAM=
+		phpgbVXU37j4DS+TdFvfHgfBYEM=
 		</data>
 		<key>Resources/__boot__.py</key>
 		<data>
-		J+HgBIAHg76YAml7wp8bEkqjn74=
+		yB6Nh7ktVAfcCT093tZVmxvP5pE=
 		</data>
 		<key>Resources/__error__.sh</key>
 		<data>
@@ -34046,7 +34042,7 @@
 		</data>
 		<key>Resources/lib/python311.zip</key>
 		<data>
-		G2hA+TuEOEXu6GL669H4HetwUE0=
+		5eDE9pluX315TI7RG3mz82VoWU4=
 		</data>
 		<key>Resources/magnavna.icns</key>
 		<data>
@@ -34814,11 +34810,7 @@
 		</data>
 		<key>Resources/site.pyc</key>
 		<data>
-		qyzb/jDnEoYhA8AAL6SAP7fpdvY=
-		</data>
-		<key>Resources/static/.DS_Store</key>
-		<data>
-		KajYz3SRUFG6++QA+ulb5+EmRBU=
+		lMEDMddzZ9XHh3/WOcaT/XM4Koc=
 		</data>
 		<key>Resources/static/css/Audiwidefont.css</key>
 		<data>
@@ -34879,10 +34871,6 @@
 		<key>Resources/static/macIcon/magnavna.icns</key>
 		<data>
 		sgIOH0ovYN5hhL2hRtl7FNrAf7Y=
-		</data>
-		<key>Resources/templates/.DS_Store</key>
-		<data>
-		3y++sUAKzaCQmjLBz2v0kvESHgc=
 		</data>
 		<key>Resources/templates/calibration.html</key>
 		<data>
@@ -35084,22 +35072,22 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			ZQ08qE3A+0Bc6mIpuPzh9zt/OAM=
+			phpgbVXU37j4DS+TdFvfHgfBYEM=
 			</data>
 			<key>hash2</key>
 			<data>
-			LsJXA2hTw7Fz7cYCNTsZ8u8AxIbVHXH7x+T1TZ9sJoM=
+			AbFlEPux2CXr/gFxcvlv/Xl4AUlaOsKn2b39wvddBAk=
 			</data>
 		</dict>
 		<key>Resources/__boot__.py</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			J+HgBIAHg76YAml7wp8bEkqjn74=
+			yB6Nh7ktVAfcCT093tZVmxvP5pE=
 			</data>
 			<key>hash2</key>
 			<data>
-			BkOUIvIKNH4y8kNcYP7aGoxUhi4aleZ1dzi9E6OLFyo=
+			x9R5ujmD3oUtaIy0cnMXaM17GRthUm6ZyfsKrGYo1ck=
 			</data>
 		</dict>
 		<key>Resources/__error__.sh</key>
@@ -128655,11 +128643,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			G2hA+TuEOEXu6GL669H4HetwUE0=
+			5eDE9pluX315TI7RG3mz82VoWU4=
 			</data>
 			<key>hash2</key>
 			<data>
-			R18LzmYsmluVTOKgSF8fyd1b5G1qKixfeisBpYa3qoY=
+			7PWzNWdX9WxJaZq0hYZFP+09b2FMwXSBx4OrgMXalbM=
 			</data>
 		</dict>
 		<key>Resources/magnavna.icns</key>
@@ -130767,11 +130755,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			qyzb/jDnEoYhA8AAL6SAP7fpdvY=
+			lMEDMddzZ9XHh3/WOcaT/XM4Koc=
 			</data>
 			<key>hash2</key>
 			<data>
-			Y2z0bKRTwFRYHfXKsNmD9/uWfjXBsHXy90L+K48hjZQ=
+			WqsvR7lWHaSnK+BbiwwmTWQKcrfmcS8FBIhYXjhNZjY=
 			</data>
 		</dict>
 		<key>Resources/static/css/Audiwidefont.css</key>

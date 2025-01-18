@@ -1,0 +1,1 @@
+Just click on the app and wait for the web browser to open. I haven't yet found a way to output console messages for debugging.

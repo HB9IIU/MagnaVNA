@@ -14,6 +14,7 @@ import traceback
 import socket
 import os
 global sweepNumber
+import platform
 sweepNumber = 0
 
 # Global Event to signal thread stop
@@ -56,38 +57,40 @@ VNA_PID = 0x5740  # NanoVNA PID
 # NanoVNA USB IDs
 VNA_version_Info=None
 
-'''
-# Determine the base directory where the executable or script is located
-if getattr(sys, 'frozen', False):  # Running as a bundled executable
-    BASE_DIR = os.path.dirname(sys.executable)  # cx_Freeze uses this for the executable path
-else:  # Running as a script
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Paths for resources
-calibration_kit_dir = os.path.join(BASE_DIR, 'CalibrationKit')
-os.makedirs(calibration_kit_dir, exist_ok=True)
+# Get the current system's OS
+current_os = platform.system()
+if current_os == "Darwin":
+    print("You are on macOS, the land of stability and no blue screens! 😎")
+    # Path to the calibration files
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    calibration_kit_dir = os.path.join(BASE_DIR, 'CalibrationKit')
+    # Create directory if it do not exist
+    os.makedirs(calibration_kit_dir, exist_ok=True)
+    template_folder = os.path.join(BASE_DIR, 'templates')
+    static_folder = os.path.join(BASE_DIR, 'static')
+elif current_os == "Windows":
+    print("You are on Windows... hope you don't see any blue screens!")
+    # Determine the base directory where the executable or script is located
+    if getattr(sys, 'frozen', False):  # Running as a bundled executable
+        BASE_DIR = os.path.dirname(sys.executable)  # cx_Freeze uses this for the executable path
+    else:  # Running as a script
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-template_folder = os.path.join(BASE_DIR, 'templates')
-static_folder = os.path.join(BASE_DIR, 'static')
+    # Paths for resources
+    calibration_kit_dir = os.path.join(BASE_DIR, 'CalibrationKit')
+    os.makedirs(calibration_kit_dir, exist_ok=True)
 
-print("BASE_DIR:", BASE_DIR)
-print("CalibrationKit:", calibration_kit_dir)
-print("Templates:", template_folder)
-print("Static:", static_folder)
-'''
+    template_folder = os.path.join(BASE_DIR, 'templates')
+    static_folder = os.path.join(BASE_DIR, 'static')
 
-# Path to the calibration files
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-calibration_kit_dir = os.path.join(BASE_DIR, 'CalibrationKit')
-# Create directory if it do not exist
-os.makedirs(calibration_kit_dir, exist_ok=True)
-template_folder = os.path.join(BASE_DIR, 'templates')
-static_folder = os.path.join(BASE_DIR, 'static')
-
-
-
-
-
+    print("BASE_DIR:", BASE_DIR)
+    print("CalibrationKit:", calibration_kit_dir)
+    print("Templates:", template_folder)
+    print("Static:", static_folder)
+else:
+    print(f"You are on {current_os}")
+    sys.exit()
 
 # --------------------------------------------------
 # Flask Routes
