@@ -38,3 +38,5 @@ If you encounter any bugs, issues, or have suggestions for new features, please 
 You can also open an issue for general feedback or improvement suggestions.
 
 Thank you for your help and feedback as we improve this tool!
+
+73! de HB9IIU
