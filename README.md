@@ -13,7 +13,7 @@ The app first performs a sweep from 1 to 30 MHz to identify the resonant frequen
 ## Demo
 
 Here is a demo video showing how MagnaVNA works:  
-[![Watch the demo on YouTube](https://img.youtube.com/vi/amZQqX4hNA8/0.jpg)](https://youtu.be/amZQqX4hNA8)
+[![Watch the demo on YouTube](https://img.youtube.com/vi/dsbxy7oMy8M/0.jpg)](https://youtu.be/dsbxy7oMy8M)
 
 ## Note
 
