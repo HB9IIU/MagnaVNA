@@ -3,3 +3,6 @@ pinegrow.json
 _pginfo
 .DS_Store
 .idea
+pinegrow.json
+build
+setup.py

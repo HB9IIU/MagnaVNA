@@ -130,7 +130,6 @@
         window.location.href = "calibration.html";
     }
 
-
     function verify() {
         $.post('/stop_continuous_sweeping_thread', function (response) {
             console.log(response.message);
@@ -139,7 +138,6 @@
         });
         window.location.href = "verification.html";
     }
-
 
     function showToast(message, toastType = "info", duration = 2000) {
         const toastHeader = document.getElementById('toastHeader');
@@ -162,8 +160,6 @@
         $('.toast').toast('show');
     }
 
-
-    // Function to add an annotation with bandwidth and Q factor
     function addBandwidthAnnotation(chart, bandwidthValue, qFactor, frequency, minSWR) {
         console.log("DEBUG: Checking annotation inputs:");
         console.log("Chart object:", chart);
@@ -244,7 +240,6 @@
         });
         console.log("DEBUG: Annotation added successfully.");
     }
-
 
     function fetchGeneralConfigurationData() {
         $.getJSON('/get_general_configuration_data', function (data) {
@@ -393,15 +388,10 @@
             if (!isEqual(data, previousData)) {
                 console.log("New data detected, updating chart...");
                 narrowsweepCounter = narrowsweepCounter + 1;
-                if (narrowsweepCounter == 4) {
+                if (narrowsweepCounter == 2) {
                     hideWideBandChart();
                 }
-
-
-
-
                 // XXX console.log("Chart updated successfully.");
-
                 // Update status to show that new data arrived
                 const statusElement = document.getElementById('status');
                 statusElement.innerText = `New Data Arrived: ${new Date().toLocaleTimeString()}`;

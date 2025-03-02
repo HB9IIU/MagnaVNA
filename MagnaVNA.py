@@ -343,9 +343,11 @@ def print_welcome_message():
     #                   73! de HB9IIU                            #
     #                                                            #
     #   This app is open-source and in continuous development.   #
-    #   Thank you for testing and using it!                      #
+    #           Thank you for testing and using it!              #
     #                                                            #
-    #   Please share any improved version via: hb9iiu@gmail.com  #                                      #
+    #     For latest news and issues reporting please visit      #
+    #                                                            #
+    #           https://github.com/HB9IIU/MagnaVNA               #
     #                                                            #
     ##############################################################
     """
