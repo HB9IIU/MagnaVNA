@@ -13,7 +13,6 @@ from scipy.signal import savgol_filter
 import webbrowser
 import traceback
 import socket
-
 global sweepNumber
 global port
 import platform
