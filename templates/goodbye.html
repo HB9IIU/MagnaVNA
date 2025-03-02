@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html class="h-100" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>HB9IIU MagnaVNA</title>
+    <link rel="icon" href="../static/img/favicon.ico" type="image/x-icon">
+    <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../static/css/Audiwidefont.css" rel="stylesheet">
+    <script src="../static/js/jquery-3.7.1.min.js"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column h-100">
+<header>
+</header>
+<main class="d-flex align-items-center justify-content-center"
+      style="height: 100vh; background: linear-gradient(90deg, #141E30, #243B55);">
+    <div>
+        <h1 style="text-align: center; font-family: 'Audiowide', cursive; font-size: 100px; color: #c7c6c6; margin: 0;">
+            73!<br>de<br>HB9IIU
+        </h1>
+    </div>
+</main>
+<script>
+    function shutdown() {
+        $.post('/shutdown', function (response) {
+            console.log(response.message);
+        }).fail(function () {
+            console.error("Failed to shut down the application");
+        });
+    }
+    window.onload = function () {
+        setTimeout(shutdown, 500);
+    };
+
+
+
+
+</script>
+<script src="../static/js/bootstrap.min.js"></script>
+<script src="../static/js/popper.min.js"></script>
+</body>
+</html>

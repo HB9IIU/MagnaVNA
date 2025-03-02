@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html class="h-100" lang="en" data-pgc-set-master>
+    <head>
+        <meta charset="utf-8">
+        <meta content="width=device-width, initial-scale=1" name="viewport">
+        <meta content="" name="description">
+        <title>HB9IIU MagnaVNA</title>
+        <link rel="icon" href="../static/img/favicon.ico" type="image/x-icon">
+        <!-- Bootstrap core CSS -->
+        <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Custom styles for this template -->
+        <link href="../static/css/sticky-footer-navbar.css" rel="stylesheet">
+        <!-- Highcharts library -->
+        <script src="../static/js/highcharts.js"></script>
+        <!-- jQuery library -->
+        <script src="../static/js/jquery-3.7.1.min.js"></script>
+        <style>#S11ChartContainer { height: 250px; width: 100%; } .toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050; min-width: 300px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none; } .toast-header-success { background-color: #28a745; color: white; border-top-left-radius: 10px; border-top-right-radius: 10px; } .toast-body { font-size: 1rem; text-align: center; }</style>
+    </head>
+    <body class="d-flex flex-column h-100">
+        <header>
+            <!-- Fixed navbar -->
+            <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+                <div class="container">
+                    <h4 class="mx-auto text-white">HB9IIU Magnetic Loop Analyzer</h4>
+                </div>
+            </nav>
+        </header>
+        <!-- Begin page content -->
+        <main class="flex-shrink-0">
+            <div class="container my-5">
+                <div class="text-center mb-4">
+                    <h2 class="text-dark" style="font-weight: bolder; font-size: 34px;">VNA SOL Calibration</h2>
+                    <p class="text-dark"><a href="https://www.allaboutcircuits.com/technical-articles/understanding-the-solt-calibration-method-and-the-behavior-of-open-and-short-standards-on-the-smith-chart/?utm_source=chatgpt.com" data-pgc-section target="_blank">Perform Short, Open, and Load calibrations for your VNA</a></p>
+                </div>
+                <!-- Short Calibration -->
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title text-danger">Step 1: Short Calibration</h4>
+                        <p class="card-text" style="font-size: 18px;">Connect the <strong>Short</strong> calibration standard to
+                    the VNA and click "Calibrate".</p>
+                        <div class="text-center">
+                            <button class="btn btn-danger btn-lg" id="shortCalButton" onclick="performCalibration('short')">
+                                Calibrate
+</button>
+                        </div>
+                        <div class="status text-center" id="shortStatus">Awaiting calibration...</div>
+                    </div>
+                </div>
+                <!-- Open Calibration -->
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h4 class="card-title text-warning">Step 2: Open Calibration</h4>
+                        <p class="card-text" style="font-size: 18px;">Connect the <strong>Open</strong> calibration standard to
+                    the VNA and click "Calibrate".</p>
+                        <div class="text-center">
+                            <button class="btn btn-warning btn-lg" disabled id="openCalButton" onclick="performCalibration('open')">Calibrate
+</button>
+                        </div>
+                        <div class="status text-center" id="openStatus">Awaiting calibration...</div>
+                    </div>
+                </div>
+                <!-- Load Calibration -->
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h4 class="card-title text-success">Step 3: Load Calibration</h4>
+                        <p class="card-text" style="font-size: 18px;">Connect the <strong>Load</strong> calibration standard to
+                    the VNA and click "Calibrate".</p>
+                        <div class="text-center">
+                            <button class="btn btn-success btn-lg" disabled id="loadCalButton" onclick="performCalibration('load')">Calibrate
+</button>
+                        </div>
+                        <div class="status text-center" id="loadStatus">Awaiting calibration...</div>
+                    </div>
+                </div>
+                <!-- Overall Status -->
+                <div class="card mt-3">
+                    <div class="card-body text-center">
+                        <h4 class="card-title">Overall Calibration Status</h4>
+                        <div class="status" id="overallStatus">Awaiting calibration steps...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="footer mt-auto py-3 bg-light">
+            <div class="container text-center"><span class="text-muted" style="font-size: 18px;">HB9IIU January 2025</span>
+            </div>
+        </footer>
+        <!-- Toast Message -->
+        <div class="toast align-items-center text-white bg-success border-0" id="calibrationToast">
+            <div class="toast-header toast-header-success">
+                <strong class="mx-auto">Calibration Complete</strong>
+            </div>
+            <div class="toast-body">
+                Calibration Complete!<br>
+                You can restart the application for the changes to take effect.
+            </div>
+        </div>
+        <!-- JavaScript -->
+        <script>
+    function performCalibration(type) {
+        const statusMap = {
+            short: "shortStatus",
+            open: "openStatus",
+            load: "loadStatus"
+        };
+        const buttonMap = {
+            short: "shortCalButton",
+            open: "openCalButton",
+            load: "loadCalButton"
+        };
+
+        // Disable button and update status
+        document.getElementById(buttonMap[type]).disabled = true;
+        document.getElementById(statusMap[type]).innerText = `Performing ${type} calibration... Please wait...`;
+
+        // Call the backend via AJAX
+        $.ajax({
+            url: `/calibrate_${type}`,
+            method: 'POST',
+            success: function (response) {
+                document.getElementById(statusMap[type]).innerText = `${type.charAt(0).toUpperCase() + type.slice(1)} calibration completed successfully!`;
+                document.getElementById(statusMap[type]).style.color = 'green';
+
+                // Enable the next step
+                if (type === 'short') {
+                    document.getElementById('openCalButton').disabled = false;
+                } else if (type === 'open') {
+                    document.getElementById('loadCalButton').disabled = false;
+                } else if (type === 'load') {
+                    showToastAndRedirect();
+                }
+
+                updateOverallStatus();
+            },
+            error: function (error) {
+                document.getElementById(statusMap[type]).innerText = `Error during ${type} calibration. Please try again.`;
+                document.getElementById(statusMap[type]).style.color = 'red';
+                document.getElementById(buttonMap[type]).disabled = false;
+            }
+        });
+    }
+
+    function updateOverallStatus() {
+        const shortStatus = document.getElementById("shortStatus").innerText;
+        const openStatus = document.getElementById("openStatus").innerText;
+        const loadStatus = document.getElementById("loadStatus").innerText;
+
+        if (shortStatus.includes("completed") && openStatus.includes("completed") && loadStatus.includes("completed")) {
+            document.getElementById("overallStatus").innerText = "All calibration steps completed successfully!";
+            document.getElementById("overallStatus").style.color = 'green';
+        } else {
+            document.getElementById("overallStatus").innerText = "Calibration in progress...";
+            document.getElementById("overallStatus").style.color = 'orange';
+        }
+    }
+
+    function showToastAndRedirect() {
+        const toast = document.getElementById("calibrationToast");
+        toast.style.display = "block";
+        toast.classList.add("show");
+        setTimeout(() => {
+            window.location.href = "/goodbye.html";
+        }, 3000);
+    }
+</script>
+        <script src="../static/js/popper.min.js"></script>
+        <script src="../static/js/bootstrap.min.js"></script>
+    </body>
+</html>

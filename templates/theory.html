@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta content="width=device-width, initial-scale=1.0" name="viewport">
+        <title>HB9IIU MagnaVNA</title>
+        <link href="../static/img/favicon.ico" rel="icon" type="image/x-icon">
+        <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+        <style>#smithChartContainer { height: 500px; width: 100%; margin-top: 30px; } .canvas-container { text-align: center; } .status { font-size: 18px; } /* Ensure table headers have background color and white text */table th { background-color: #c6ccd3 !important;  /* Blue background for header */ color: white !important;  /* White text color for header */ } h1 { font-size: 2.5rem;  /* Increased font size */ text-align: center;  /* Center the title */ } table { width: 100%; margin-top: 20px; border-collapse: collapse; } table th, table td { padding: 12px; text-align: center; } table th { background-color: #007bff; color: white; } table td { background-color: #f9f9f9; } .table-responsive { margin-top: 20px; }</style>
+    </head>
+    <body class="d-flex flex-column h-100">
+        <header>
+            <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+                <div class="container">
+                    <h4 class="mx-auto text-white">HB9IIU Magnetic Loop Analyzer</h4>
+                </div>
+            </nav>
+        </header>
+        <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+            <div class="container-fluid d-flex align-items-center mx-1" data-pg-collapsed>
+                <div class="col-md-2 d-flex align-items-center">
+                    <h4 class="text-white">HB9IIU</h4>
+                </div>
+                <div class="col-md-8 d-flex justify-content-center align-items-center">
+                    <h4 class="text-white" style="color: #f00c0c;">Understanding SWR, Bandwidth, and Q Factor</h4>
+                </div>
+                <div class="col-md-2 d-flex justify-content-end align-items-center"><a href="https://github.com/HB9IIU" target="_blank"> <img src="../static/img/github.png" style="margin-top: -8px; margin-bottom: -8px;" width="30px"> </a>
+                </div>
+            </div>
+        </nav>
+        <main class="flex-shrink-0" data-pg-collapsed>
+            <div class="container my-5">
+                <div class="text-center mb-4">
+</div>
+                <div class="container" style="padding-top: 24px;">
+                    <p>
+                When using a Vector Network Analyzer (VNA) to characterize antennas (like a magnetic loop antenna), the
+                following key parameters are critical: </p>
+                    <div class="section">
+                        <h2>1. Standing Wave Ratio (SWR)</h2>
+                        <p>The <strong>SWR</strong> measures how effectively power is being transferred to the antenna. An <strong>SWR</strong> of 1:1 indicates perfect matching, while a ratio of 2:1 is often considered
+                    acceptable. You can calculate <strong>SWR</strong> from the <strong>S11 parameter</strong>, which
+                    represents the reflection coefficient of the antenna.</p>
+                        <p>
+                    The formula used for calculating <strong>SWR</strong> from <strong>S11</strong> is: </p>
+                        <div class="text-center">
+                            <img src="../static/formulaes/swr_formula.png" width="280">
+                        </div>
+                        <p>
+                    Where <strong>S11</strong> is the reflection coefficient (in dB) measured by the VNA. An <strong>SWR</strong> ≤ <strong>2</strong> is often used as a threshold to define a usable bandwidth. </p>
+                    </div>
+                    <div class="section">
+                        <h2>2. Bandwidth</h2>
+                        <p><strong>Bandwidth</strong> is defined as the range of frequencies over which the <strong>SWR</strong>
+                    is acceptable. Specifically, we calculate the <strong>bandwidth</strong> where the <strong>SWR</strong> remains less than or equal to <strong>2</strong> (<strong>SWR</strong> ≤ 2) or
+                    sometimes <strong>3</strong> (<strong>SWR</strong> ≤ 3), depending on the application's
+                    requirements. </p>
+                        <p>In this application, the frequency range is swept, and the <strong>S11</strong> data is analyzed. The <strong>bandwidth</strong> is the frequency range where the <strong>SWR</strong> remains below the
+                    threshold. The formula for calculating <strong>bandwidth</strong> is:</p>
+                        <div class="text-center">
+                            <img src="../static/formulaes/bandwidth_formula.png" width="400"/>
+                        </div>
+                        <p>
+                    Where <strong>f<sub>high</sub></strong> is the upper frequency limit and <strong>f<sub>low</sub></strong> is the lower frequency limit where <strong>SWR</strong> ≤ 2. </p>
+                    </div>
+                    <div class="section">
+                        <h2>3. Quality Factor (Q Factor)</h2>
+                        <p>
+                    The <strong>Q Factor</strong> gives a measure of the sharpness of the resonance. It's calculated by
+                    dividing the center frequency by the bandwidth. A higher <strong>Q</strong> value indicates a
+                    narrower bandwidth and sharper resonance. </p>
+                        <p>
+                    The formula for <strong>Q Factor</strong> is: </p>
+                        <div class="text-center">
+                            <img src="../static/formulaes/q_factor_formula.png" width="150"/>
+                        </div>
+                        <p>
+                    Where: <ul>
+                                <li><strong>f<sub>center</sub></strong> is the resonance frequency (the frequency with the lowest<strong>SWR</strong>).
+                                </li>
+                                <li><strong>BW</strong> is the bandwidth calculated as the range of frequencies where<strong>SWR</strong> ≤ 2.
+                                </li>
+                            </ul> </p>
+                    </div>
+                    <div class="section">
+                        <h2>How We Calculate These Parameters</h2>
+                        <p>
+                    Using the <strong>S11</strong> data from the VNA: </p>
+                        <ol>
+                            <li>
+                                <strong>SWR</strong> is computed for each frequency using the formula above.
+                            </li>
+                            <li>The <strong>frequency range</strong> is then examined to find the points where<strong>SWR</strong> ≤ 2 or 3.
+                            </li>
+                            <li>
+                                <strong>Bandwidth</strong> is calculated as the difference between the highest and lowest
+                                frequencies in this range.
+                            </li>
+                            <li>The <strong>Q Factor</strong> is determined based on the center frequency and the bandwidth.
+                            </li>
+                        </ol>
+                        <p>
+                    These calculations help to assess the antenna's performance and identify the best frequencies for
+                    operation. </p>
+                    </div>
+                    <div class="section">
+                        <h2>Reflected Power Based on SWR (100W Example)</h2>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Reflected Power (Watts)</th>
+                                        <th>SWR</th>
+                                        <th>Transmitted Power (Watts)</th>
+                                        <th>Reflected Power (%)</th>
+                                        <th>Explanation</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>1</td>
+                                        <td>0W</td>
+                                        <td>100W</td>
+                                        <td>0%</td>
+                                        <td>Perfect match, no reflected power</td>
+                                    </tr>
+                                    <tr>
+                                        <td>1.5</td>
+                                        <td>6.25W</td>
+                                        <td>93.75W</td>
+                                        <td>6.25%</td>
+                                        <td>Small reflection, most power is transferred</td>
+                                    </tr>
+                                    <tr>
+                                        <td>2</td>
+                                        <td>16.67W</td>
+                                        <td>83.33W</td>
+                                        <td>16.67%</td>
+                                        <td>Noticeable reflection, but still tolerable for most radios</td>
+                                    </tr>
+                                    <tr>
+                                        <td>2.5</td>
+                                        <td>25W</td>
+                                        <td>75W</td>
+                                        <td>25%</td>
+                                        <td>High reflection, could cause heat buildup</td>
+                                    </tr>
+                                    <tr>
+                                        <td>3</td>
+                                        <td>36.36W</td>
+                                        <td>63.64W</td>
+                                        <td>36.36%</td>
+                                        <td>Significant reflection, potentially harmful over time</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Sweep Steps -->
+                <!-- 2D Canvas for simplified Smith chart -->
+            </div>
+        </main>
+        <footer class="footer mt-auto py-3 bg-light">
+            <div class="container text-center" data-pg-collapsed><span class="text-muted">HB9IIU January 2025</span>
+            </div>
+        </footer>
+        <script src="../static/js/popper.min.js"></script>
+        <script src="../static/js/bootstrap.min.js"></script>
+    </body>
+</html>

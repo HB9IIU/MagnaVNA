@@ -1,0 +1,131 @@
+Metadata-Version: 2.2
+Name: scikit-rf
+Version: 1.6.2
+Summary: Object Oriented Microwave Engineering
+Author-email: Alex Arsenovic <alexanderarsenovic@gmail.com>
+License: LICENSE.txt
+Project-URL: homepage, https://scikit-rf.org/
+Project-URL: repository, https://github.com/scikit-rf/scikit-rf
+Project-URL: documentation, https://scikit-rf.readthedocs.io/en/latest/
+Keywords: engineering,electronics,microwave-engineering,radio-frequency,touchstone
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Education
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Communications :: Ham Radio
+Classifier: Topic :: Scientific/Engineering
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.21
+Requires-Dist: scipy>=1.7
+Requires-Dist: pandas>=1.1
+Requires-Dist: typing-extensions
+Provides-Extra: test
+Requires-Dist: pytest>=7.0; extra == "test"
+Requires-Dist: pytest-mock>=3.10; extra == "test"
+Requires-Dist: pytest-xdist>=3.5.0; extra == "test"
+Requires-Dist: coverage>=6.0; extra == "test"
+Requires-Dist: pytest-cov>=4.0; extra == "test"
+Provides-Extra: testspice
+Requires-Dist: pyspice>=1.5; extra == "testspice"
+Provides-Extra: plot
+Requires-Dist: matplotlib>=3.5; extra == "plot"
+Provides-Extra: xlsx
+Requires-Dist: openpyxl>=3.0; extra == "xlsx"
+Provides-Extra: netw
+Requires-Dist: networkx>=2.0; extra == "netw"
+Provides-Extra: visa
+Requires-Dist: PyVISA>=1.12; extra == "visa"
+Requires-Dist: pyvisa-py>=0.6; extra == "visa"
+Provides-Extra: docs
+Requires-Dist: ipython>=7; extra == "docs"
+Requires-Dist: ipykernel>=6.15; extra == "docs"
+Requires-Dist: ipywidgets>=8.0.2; extra == "docs"
+Requires-Dist: python-ivi>=0.14.9; extra == "docs"
+Requires-Dist: nbval>=0.9; extra == "docs"
+Requires-Dist: jupyter-client>=7.3.5; extra == "docs"
+Requires-Dist: sphinx-rtd-theme>=1.0; extra == "docs"
+Requires-Dist: sphinx>=4; extra == "docs"
+Requires-Dist: nbsphinx>=0.8.9; extra == "docs"
+Requires-Dist: openpyxl>=3; extra == "docs"
+
+[![Code Testing](https://github.com/scikit-rf/scikit-rf/workflows/Code%20linting%20and%20testing/badge.svg)](https://github.com/scikit-rf/scikit-rf/actions?query=workflow%3A%22Code+linting+and+testing%22)
+[![Documentation Status](https://readthedocs.org/projects/scikit-rf/badge/?version=latest)](https://readthedocs.org/projects/scikit-rf/?badge=latest)
+[![Coverage Status](https://coveralls.io/repos/scikit-rf/scikit-rf/badge.png)](https://coveralls.io/r/scikit-rf/scikit-rf)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](./LICENSE.md)
+
+![PyPI - Downloads](https://img.shields.io/pypi/dm/scikit-rf)
+[![Conda Downloads](https://anaconda.org/conda-forge/scikit-rf/badges/downloads.svg)](https://anaconda.org/conda-forge/scikit-rf)
+
+## Description
+
+![scikit-rf_logo](doc/source/_static/scikit-rf-title-flat.png)
+
+**scikit-rf** (aka `skrf`) is an Open Source, BSD-licensed package for RF/Microwave engineering implemented
+in the Python programming language. It provides a modern, object-oriented library which is both
+flexible and scalable.
+
+* [Home Page](http://www.scikit-rf.org)
+* [Documentation](http://scikit-rf.readthedocs.org/)
+
+## Install
+
+[![PyPI version](https://img.shields.io/pypi/v/scikit-rf?style=flat&logo=pypi)](https://pypi.org/project/scikit-rf/)
+[![Conda-forge version](https://img.shields.io/conda/v/conda-forge/scikit-rf?style=flat&logo=anaconda)](https://img.shields.io/conda/v/conda-forge/scikit-rf)
+[![Conda version](https://anaconda.org/conda-forge/scikit-rf/badges/latest_release_date.svg)](https://anaconda.org/conda-forge/scikit-rf)
+
+If you have [installed Python](https://wiki.python.org/moin/BeginnersGuide/Download), you can install scikit-rf from [pip](https://pypi.org/project/pip/) via
+```Shell
+python -m pip install scikit-rf
+```
+
+If you have [installed conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html), then you can also get scikit-rf from
+```Shell
+conda install -c conda-forge scikit-rf
+```
+
+**scikit-rf** includes standalone gui applications which can be installed and used like this
+```Shell
+# Install the additional dependencies for the gui applications
+python -m pip install scikit-rf[plot,visa]
+# Run the apps
+data-grabber # Run the data-grabber application
+multiline-trl # Run the multiline-trl application
+```
+
+## Questions or comments? Ask the Community
+
+[![Slack](https://img.shields.io/badge/Slack-join%20chat-blueviolet?style=flat&logo=slack)](https://join.slack.com/t/scikit-rf/shared_invite/zt-d82b62wg-0bdSJjZVhHBKf6687V80Jg)
+[![Matrix](https://img.shields.io/badge/Matrix-join%20chat-blueviolet?style=flat&logo=matrix)](https://app.element.io/#/room/#scikit-rf:matrix.org)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn_scikit_rf_group-orange?style=flat)](https://www.linkedin.com/groups/12462155/)
+
+* [LinkedIn scikit-rf Users Group](https://www.linkedin.com/groups/12462155/): User group to ask and answer questions and to received scikit-rf announcements.
+* Chat: scikit-rf have channels on both [Slack](https://join.slack.com/t/scikit-rf/shared_invite/zt-d82b62wg-0bdSJjZVhHBKf6687V80Jg) and [Matrix](https://app.element.io/#/room/#scikit-rf:matrix.org)
+* [Suggestion box](https://docs.google.com/forms/d/e/1FAIpQLSfkSNy8KzoHwdDxYGCmHHiA3GsHgN6zKTFI2NrcUR29U7Xx6A/viewform?usp=sf_link): if you would like to suggest a feature/topic for consideration (optionally anonymous).
+
+## Contributing to the scikit-rf project
+
+There is multiple ways to contribute to an open-source project like scikit-rf!
+
+* [Sponsoring the project](https://scikit-rf.readthedocs.io/en/latest/contributing/index.html#sponsoring-the-project)
+* [Contributing to the code](https://scikit-rf.readthedocs.io/en/latest/contributing/index.html#contributing-to-the-code)
+* [Contributing to the Documentation](https://scikit-rf.readthedocs.io/en/latest/contributing/index.html#contributing-to-the-documentation)
+* [Getting some merchandise to express your love](https://scikit-rf.org/merch.html)
+
+![skrfshirt](https://raw.githubusercontent.com/scikit-rf/scikit-rf/master/logo/skrfshirtwhite.png)
+
+## Authors
+The list of the developers of scikit-rf is available on the [contributors page](https://github.com/scikit-rf/scikit-rf/graphs/contributors/).
+
+## License
+
+scikit-rf is permissively licensed under a [3-clause BSD license](LICENSE.txt).

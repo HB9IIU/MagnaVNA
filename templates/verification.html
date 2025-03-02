@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>HB9IIU MagnaVNA</title>
+        <link rel="icon" href="../static/img/favicon.ico" type="image/x-icon">
+        <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+        <script src="../static/js/jquery-3.7.1.min.js"></script>
+        <style>
+        #smithChartContainer {
+            height: 500px;
+            width: 100%;
+            margin-top: 30px;
+        }
+        .canvas-container {
+            text-align: center;
+        }
+        .status {
+            font-size: 16px;
+        }
+    </style>
+    </head>
+    <body class="d-flex flex-column h-100">
+        <header>
+            <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+                <div class="container">
+                    <h4 class="mx-auto text-white">HB9IIU Magnetic Loop Analyzer</h4>
+                </div>
+            </nav>
+        </header>
+        <main class="flex-shrink-0">
+            <div class="container my-5">
+                <div class="text-center mb-4">
+                    <h2 class="text-dark">SOL Calibration Verification</h2>
+                    <p>Perform Short, Open, and Load sweeps to validate calibration.</p>
+                </div>
+                <!-- Sweep Steps -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h4 class="card-title text-danger">Step 1: Short Sweep</h4>
+                        <p>Connect the <strong>Short</strong> standard to your VNA and click "Start Sweep".</p>
+                        <div class="text-center">
+                            <button class="btn btn-danger btn-lg" id="shortSweepButton" onclick="startSweep('short')">Start Sweep</button>
+                        </div>
+                        <div class="status text-center mt-2" id="shortStatus">Awaiting sweep...</div>
+                    </div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h4 class="card-title text-warning">Step 2: Open Sweep</h4>
+                        <p>Connect the <strong>Open</strong> standard to your VNA and click "Start Sweep".</p>
+                        <div class="text-center">
+                            <button class="btn btn-warning btn-lg" id="openSweepButton" disabled onclick="startSweep('open')">Start Sweep</button>
+                        </div>
+                        <div class="status text-center mt-2" id="openStatus">Awaiting sweep...</div>
+                    </div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h4 class="card-title text-success">Step 3: Load Sweep</h4>
+                        <p>Connect the <strong>Load</strong> standard to your VNA and click "Start Sweep".</p>
+                        <div class="text-center">
+                            <button class="btn btn-success btn-lg" id="loadSweepButton" disabled onclick="startSweep('load')">Start Sweep</button>
+                        </div>
+                        <div class="status text-center mt-2" id="loadStatus">Awaiting sweep...</div>
+                    </div>
+                </div>
+                <div class="container">
+                    <div class="row">
+                        <div data-pg-collapsed class="col-md-6">
+                            <h3>Expected Alignment</h3> 
+                            <p style="font-weight: bolder;">Ideal Calibration: </p>
+                            <p>When the Red (Short), Green (Open), and Blue (Load) dots are aligned along the horizontal axis of the Smith chart, this indicates that the calibration is valid and your VNA setup is correctly calibrated. This alignment means the reflections for the Short, Open, and Load standards are properly characterized.
+</p>
+                            <p style="font-weight: bolder;">Invalid Calibration: </p>
+                            <p>If the dots are misaligned or appear in incorrect positions (not on the horizontal axis), this suggests that the calibration is invalid. You may need to recheck your VNA connections or repeat the sweep procedure.</p> 
+                        </div>
+                        <div class="col-md-6">                              
+
+                            <div class="canvas-container">
+                                <canvas id="smithChart" width="400" height="400"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 2D Canvas for simplified Smith chart -->
+            </div>
+        </main>
+        <footer class="footer mt-auto py-3 bg-light">
+            <div class="container text-center" data-pg-collapsed>
+                <span class="text-muted">HB9IIU February 2025</span>
+            </div>
+        </footer>
+        <script>
+    // Data for the Short, Open, Load calibration points
+    let smithData = {
+        short: [],
+        open: [],
+        load: []
+    };
+
+    // Canvas setup for simplified Smith chart
+    const canvas = document.getElementById("smithChart");
+    const ctx = canvas.getContext("2d");
+
+    // Draw the unit circle
+    function drawUnitCircle() {
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = canvas.width / 2 - 10;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+    }
+
+    // Draw axes (Real and Imaginary)
+    function drawAxes() {
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const length = canvas.width / 2;
+        ctx.beginPath();
+        // Real axis
+        ctx.moveTo(10, centerY);
+        ctx.lineTo(canvas.width - 10, centerY);
+        // Imaginary axis
+        ctx.moveTo(centerX, 10);
+        ctx.lineTo(centerX, canvas.height - 10);
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+    }
+
+    // Draw a point on the Smith chart (x, y are normalized coordinates)
+    function drawPoint(x, y, color) {
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const scale = canvas.width / 2 - 10;
+        ctx.beginPath();
+        ctx.arc(centerX + x * scale, centerY - y * scale, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+    }
+
+
+
+function plotCalibration() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+    drawUnitCircle();
+    drawAxes();
+
+    // Plot points for Short, Open, and Load (all points in s11)
+    if (smithData.short && smithData.short.length > 0) {
+        smithData.short.forEach(point => {
+            console.log('Plotting Short: ', point.real, point.imag);
+            drawPoint(point.real, point.imag, "red");
+        });
+    }
+    if (smithData.open && smithData.open.length > 0) {
+        smithData.open.forEach(point => {
+            console.log('Plotting Open: ', point.real, point.imag);
+            drawPoint(point.real, point.imag, "green");
+        });
+    }
+    if (smithData.load && smithData.load.length > 0) {
+        smithData.load.forEach(point => {
+            console.log('Plotting Load: ', point.real, point.imag);
+            drawPoint(point.real, point.imag, "blue");
+        });
+    }
+
+
+}
+
+
+
+
+
+
+    // Start Sweep Function (AJAX Request)
+    function startSweep(type) {
+        const buttonMap = {
+            short: 'shortSweepButton',
+            open: 'openSweepButton',
+            load: 'loadSweepButton'
+        };
+        const statusMap = {
+            short: 'shortStatus',
+            open: 'openStatus',
+            load: 'loadStatus'
+        };
+
+        // Disable the button and update the status
+        document.getElementById(buttonMap[type]).disabled = true;
+        document.getElementById(statusMap[type]).innerText = `Performing ${type} sweep...`;
+
+        // Send AJAX request to perform the sweep
+        $.ajax({
+            url: `/sweep_${type}`,
+            method: 'POST',
+            success: function (response) {
+                console.log(`Sweep ${type} response:`, response);
+
+                // Ensure response.s11 contains valid data
+                if (!response.s11 || response.s11.length === 0) {
+                    console.error(`No data returned for ${type} sweep.`);
+                    document.getElementById(statusMap[type]).innerText = `Error: No data for ${type} sweep.`;
+                    return;
+                }
+
+                // Update smithData with the response data
+                smithData[type] = smithData[type].concat(response.s11); // Concatenate new points
+
+                document.getElementById(statusMap[type]).innerText = `${type.charAt(0).toUpperCase() + type.slice(1)} sweep completed.`;
+
+                // After all sweeps, update the chart
+                if (type === 'load') {
+                    plotCalibration(); // Update the calibration plot after all sweeps
+                } else {
+                    // Enable the next step for other sweeps
+                    if (type === 'short') {
+                        document.getElementById('openSweepButton').disabled = false;
+                    } else if (type === 'open') {
+                        document.getElementById('loadSweepButton').disabled = false;
+                    }
+                }
+            },
+            error: function (error) {
+                console.error(`Error during ${type} sweep:`, error);
+                document.getElementById(statusMap[type]).innerText = `Error during ${type} sweep. Please try again.`;
+                document.getElementById(buttonMap[type]).disabled = false;
+            }
+        });
+    }
+
+    // Run the initial plot on page load
+    plotCalibration();
+</script>
+        <script src="../static/js/popper.min.js"></script>
+        <script src="../static/js/bootstrap.min.js"></script>
+    </body>
+</html>
