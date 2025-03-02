@@ -6,3 +6,5 @@ _pginfo
 pinegrow.json
 build
 setup.py
+dist
+setupOLD.py
