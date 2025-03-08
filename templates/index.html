@@ -1,109 +1,315 @@
 <!DOCTYPE html>
 <html class="h-100" lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta content="width=device-width, initial-scale=1" name="viewport">
-        <meta content="" name="description">
-        <title>HB9IIU MagnaVNA</title>
-        <link href="../static/img/favicon.ico" rel="icon" type="image/x-icon">
-        <!-- Bootstrap core CSS -->
-        <link href="../static/css/bootstrap.min.css" rel="stylesheet">
-        <!-- Custom styles for this template -->
-        <link href="../static/css/sticky-footer-navbar.css" rel="stylesheet">
-        <!-- Highcharts library-->
-        <script src="../static/js/highcharts.js"></script>
-        <script src="../static/js/exporting.js"></script>
-        <script src="../static/js/offline-exporting.js"></script>
-        <script src="../static/js/annotations.js"></script>
-        <script src="../static/js/jquery-3.7.1.min.js"></script>
-        <style>#S11ChartContainer { height: 250px; width: 100%; } /* Center the toast */.toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050; min-width: 300px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); } /* Success header style */.toast-header-success { background-color: #28a745; color: white; border-top-left-radius: 10px; border-top-right-radius: 10px; } /* Error header style */.toast-header-error { background-color: #dc3545; color: white; border-top-left-radius: 10px; border-top-right-radius: 10px; } /* Warning header style */.toast-header-warning { background-color: #ffc107;  /* Yellow */ color: black; border-top-left-radius: 10px; border-top-right-radius: 10px; } /* Info header style */.toast-header-info { background-color: #17a2b8;  /* Blue */ color: white; border-top-left-radius: 10px; border-top-right-radius: 10px; } /* Body style */.toast-body { font-size: 1rem; text-align: center; }</style>
-    </head>
-    <body class="d-flex flex-column h-100">
-        <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark" data-pg-collapsed>
-            <div class="container-fluid d-flex align-items-center mx-1" data-pg-collapsed>
-                <div class="col-md-2 d-flex align-items-center">
-                    <h4 class="text-white">HB9IIU</h4>
-                </div>
-                <div class="col-md-8 d-flex justify-content-center align-items-center">
-                    <h4 class="text-white" style="color: #f00c0c;">Magnetic Loop Analyzer</h4>
-                </div>
-                <div class="col-md-2 d-flex justify-content-end align-items-center"><a href="https://github.com/HB9IIU" target="_blank"> <img src="../static/img/github.png" style="margin-top: -8px; margin-bottom: -8px;" width="30px"> </a>
-                </div>
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="" name="description">
+    <title>HB9IIU MagnaVNA</title>
+    <link href="../static/img/favicon.ico" rel="icon" type="image/x-icon">
+    <!-- Bootstrap core CSS -->
+    <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom styles for this template -->
+    <link href="../static/css/sticky-footer-navbar.css" rel="stylesheet">
+    <!-- Highcharts library-->
+    <script src="../static/js/highcharts.js"></script>
+    <script src="../static/js/exporting.js"></script>
+    <script src="../static/js/offline-exporting.js"></script>
+    <script src="../static/js/annotations.js"></script>
+    <script src="../static/js/accessibility.js"></script>
+    <script src="../static/js/jquery-3.7.1.min.js"></script>
+    <style>#S11ChartContainer {
+        height: 250px;
+        width: 100%;
+    }
+
+    /* Center the toast */
+    .toast {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1050;
+        min-width: 300px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Success header style */
+    .toast-header-success {
+        background-color: #28a745;
+        color: white;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+    }
+
+    /* Error header style */
+    .toast-header-error {
+        background-color: #dc3545;
+        color: white;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+    }
+
+    /* Warning header style */
+    .toast-header-warning {
+        background-color: #ffc107; /* Yellow */
+        color: black;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+    }
+
+    /* Info header style */
+    .toast-header-info {
+        background-color: #17a2b8; /* Blue */
+        color: white;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+    }
+
+    /* Body style */
+    .toast-body {
+        font-size: 1rem;
+        text-align: center;
+    }</style>
+</head>
+<body class="d-flex flex-column h-100">
+<nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark" data-pg-collapsed>
+    <div class="container-fluid d-flex align-items-center mx-1" data-pg-collapsed>
+        <div class="col-md-2 d-flex align-items-center">
+            <h4 class="text-white">HB9IIU</h4>
+        </div>
+        <div class="col-md-8 d-flex justify-content-center align-items-center">
+            <h4 class="text-white" style="color: #f00c0c;">Magnetic Loop Antenna Analyzer</h4>
+        </div>
+        <div class="align-items-center col-lg-2 col-md-1 d-flex justify-content-end">
+            <h6 id="versionLabel" style="color: #ffffff; margin-top: 8px; text-align: left; margin-right: 10px;">
+                ....</h6>
+            <a href="https://github.com/HB9IIU" target="_blank"><img src="../static/img/github.png"
+                                                                     style="margin-top: -8px; margin-bottom: -8px;"
+                                                                     width="30px"> </a>
+        </div>
+    </div>
+</nav>
+<!-- Begin page content -->
+<main class="flex-shrink-0">
+    <div class="container" style="margin-top: -30px;">
+        <div id="contentContainer" style="display: none; margin-top: 60px;">
+            <div id="S11ChartContainerTitle">
+                <h6 class="mt-0 pt-0 text-center">Frequency Response and S11 Reflection
+                    Coefficient</h6>
             </div>
-        </nav>
-        <!-- Begin page content -->
-        <main class="flex-shrink-0">
-            <div class="container">
-                <div id="contentContainer" style="display: none; margin-top: 60px;">
-                    <div id="S11ChartContainerTitle">
-                        <h6 class="mt-0 pt-0 text-center">Frequency Response and S11 Reflection
-                Coefficient</h6>
-                    </div>
-                    <div id="S11ChartContainer"></div>
-                    <h6 class="text-center" style="margin-bottom: -4px;">S11 and SWR Characteristics Around Resonance</h6>
-                    <div class="text-center" id="status" style="font-size: 14px; color: gray; margin-bottom: -5px;">
-                        No data fetched yet
-</div>
-                    <div id="S11ZoomChartContainer"></div>
-                </div>
+            <div id="S11ChartContainer"></div>
+            <h6 class="text-center" style="margin-bottom: -4px;">S11 and SWR Characteristics Around Resonance</h6>
+            <div class="text-center" id="status" style="font-size: 14px; color: gray; margin-bottom: -5px;">
+                No data fetched yet
             </div>
-            <div class="container" data-pg-collapsed>
-                <div class="row align-items-center">
-                    <!-- Set height for vertical centering -->
-                    <div class="col-md-3" data-pg-collapsed style="text-align: center;">
-                        <button class="bg-success btn btn-secondary btn-sm rounded rounded-5 w-75" onclick="calibrate()" type="button">Re-Calibrate
-</button>
-                    </div>
-                    <div class="align-items-center col-md-3 d-flex justify-content-center" data-pg-collapsed style="text-align: center;">
-                        <button class="bg-warning btn btn-sm rounded rounded-5 w-75" onclick="verify()" type="button">Verify
-                            Calibration
-</button>
-                    </div>
-                    <div class="align-items-center col-md-3 d-flex justify-content-center" style="text-align: center;">
-                        <button class="bg-info btn btn-sm rounded rounded-5 w-75" onclick="showTheory()" type="button">Theory
-</button>
-                    </div>
-                    <div class="col-md-3" data-pg-collapsed style="text-align: center;">
-                        <button class="bg-danger btn btn-secondary btn-sm rounded rounded-5 w-75" onclick="shutdown()" type="button">Exit
-</button>
-                    </div>
-                </div>
+            <div id="S11ZoomChartContainer"></div>
+        </div>
+    </div>
+    <div class="container" data-pg-collapsed style="padding-right: 45px; padding-left: 45px;">
+        <div class="row mx-2" data-pg-collapsed>
+            <div class="align-items-center col-md-3 d-flex justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="ResonanceFrequencyLabel"
+                    style="font-family: '42dot Sans', sans-serif; font-size: 22px; margin-top: 8px;">...</h3>
             </div>
-            <div aria-atomic="true" aria-live="assertive" class="toast" id="statusToast" role="alert" data-pg-collapsed>
-                <div class="toast-header" id="toastHeader" data-pg-collapsed><strong class="mx-auto">MagnaVNA Info</strong>
-                </div>
-                <div class="toast-body" id="toastBody">
-                    <!-- Toast body content will be updated dynamically -->
-                </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="SWRlabel"
+                    style="font-family: '42dot Sans', sans-serif; font-size: 22px; margin-top: 8px;">...</h3>
             </div>
-        </main>
-        <footer class="footer mt-auto py-3 bg-light">
-            <div class="container text-center">
-                <span class="text-muted" style="font-size: 18px;">HB9IIU January 2025</span>
+            <div class="col-md-2 d-flex align-items-center justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="BandwidthLabel" style="font-size: 22px; margin-top: 8px;">...</h3>
             </div>
-        </footer>
-        <script>
+            <div class="col-md-2 d-flex align-items-center justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="QualityFactorLabel" style="font-size: 22px; margin-top: 8px;">...</h3>
+            </div>
+            <div class="align-items-center col-md-3 d-flex justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="ImpedanceLabel" style="font-size: 22px; margin-top: 8px;">...</h3>
+            </div>
+        </div>
+        <div class="row mx-2" data-pg-collapsed>
+            <div class="align-items-center col-md-3 d-flex justify-content-center">
+                <h3 class="text-center" style="font-family: '42dot Sans', sans-serif; font-size: 14px;">Resonance
+                    Frequency</h3>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center">
+                <h3 class="text-center" style="font-family: '42dot Sans', sans-serif; font-size: 14px;">SWR</h3>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center">
+                <h3 class="text-center" id="LBW" style="font-family: '42dot Sans', sans-serif; font-size: 15px;">
+                    Bandwidth</h3>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center">
+                <h3 class="text-center" id="LQ" style="font-size: 14px;">Quality Factor</h3>
+            </div>
+            <div class="align-items-center col-md-3 d-flex justify-content-center">
+                <h3 class="text-center" style="font-size: 14px;">Impedance</h3>
+            </div>
+        </div>
+        <div class="row mx-2" data-pg-collapsed>
+            <div class="align-items-center col-md-2 d-flex justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="ReactanceTypeLabel"
+                    style="font-family: '42dot Sans', sans-serif; font-size: 22px; margin-top: 8px;">...</h3>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="ParallelRlabel"
+                    style="font-family: '42dot Sans', sans-serif; font-size: 22px; margin-top: 8px;">...</h3>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="ParallelXlabel" style="font-size: 22px; margin-top: 8px;">...</h3>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="ParallelLlabel" style="font-size: 22px; margin-top: 8px;">...</h3>
+            </div>
+            <div class="align-items-center col-md-2 d-flex justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="SeriesLabel" style="font-size: 22px; margin-top: 8px;">...</h3>
+            </div>
+            <div class="align-items-center col-md-2 d-flex justify-content-center"
+                 style="background-color: #eaeaea; height: 40px;">
+                <h3 class="text-center" id="PhaseS11Label" style="font-size: 22px; margin-top: 8px;">...</h3>
+            </div>
+        </div>
+        <div class="row mx-2" data-pg-collapsed>
+            <div class="align-items-center col-md-2 d-flex justify-content-center">
+                <h3 class="text-center" style="font-size: 14px;">Reactance Type</h3>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center">
+                <h3 class="text-center" style="font-size: 14px;">Parallel R</h3>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center">
+                <h3 class="text-center" style="font-size: 14px;">Parallel X</h3>
+            </div>
+            <div class="col-md-2 d-flex align-items-center justify-content-center">
+                <h3 class="text-center" style="font-size: 14px;">Parallel L</h3>
+            </div>
+            <div class="align-items-center col-md-2 d-flex justify-content-center">
+                <h3 class="text-center" id="seriesType" style="font-size: 14px;">Series x</h3>
+            </div>
+            <div class="align-items-center col-md-2 d-flex justify-content-center">
+                <h3 class="text-center" style="font-size: 14px;">Phase S11</h3>
+            </div>
+        </div>
+    </div>
+    <div class="container" data-pg-collapsed>
+        <div class="row align-items-center">
+            <!-- Set height for vertical centering -->
+            <div class="col-md-2" data-pg-collapsed style="text-align: center;">
+                <button class="bg-success btn btn-secondary btn-sm rounded rounded-5 w-75" onclick="calibrate()"
+                        type="button">Re-Calibrate
+                </button>
+            </div>
+            <div class="align-items-center col-md-2 d-flex justify-content-center" data-pg-collapsed
+                 style="text-align: center;">
+                <button class="bg-warning btn btn-sm rounded rounded-5 w-75" onclick="verify()" type="button">Verify
+                    Cal.
+                </button>
+            </div>
+            <div class="col-md-4" style="text-align: center;">
+                <button class="bg-danger btn btn-secondary btn-sm rounded rounded-5 w-75" onclick="shutdown()"
+                        type="button">Exit
+                </button>
+            </div>
+            <div class="align-items-center col-md-2 d-flex justify-content-center" data-pg-collapsed
+                 style="text-align: center;">
+
+               <!--
+                <button class="bg-warning btn btn-sm rounded rounded-5 w-75" onclick="showWSPR()" type="button">WSPR
+                </button>
+           -->
+                <button class="bg-warning btn btn-sm rounded rounded-5 w-75" data-bs-toggle="modal" data-bs-target="#wsprModal" type="button">WSPR</button>
+
+
+
+            </div>
+            <div class="align-items-center col-md-2 d-flex justify-content-center" data-pg-collapsed
+                 style="text-align: center;">
+                <button class="bg-info btn btn-sm rounded rounded-5 w-75" onclick="showTheory()" type="button">Theory
+                </button>
+            </div>
+        </div>
+    </div>
+    <div aria-atomic="true" aria-live="assertive" class="toast" data-pg-collapsed id="statusToast" role="alert">
+        <div class="toast-header" data-pg-collapsed id="toastHeader"><strong class="mx-auto">MagnaVNA Info</strong>
+        </div>
+        <div class="toast-body" id="toastBody">
+            <!-- Toast body content will be updated dynamically -->
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-light">
+    <div class="container text-center">
+        <span class="text-muted" style="font-size: 18px;">HB9IIU March 2025</span>
+    </div>
+</footer>
+<script>
+
+    var AppVersion = "";
     var wideSweepChart;
     var narrowSweepChart;
     var narrowsweepCounter = 0;
     let previousData = null; // To store the last fetched data
+
     var WSstartFrequency;
     var WSstopFrequency;
     var WSnumberOfPoints;
     var VNA_version_Info;
     var calibrationFilesAvailable = false;
     let newDataMessageVisible = false; // Flag to track the visibility of the "New Data Arrived" message
+    var displayLabelOnPlot = true;
+
+    // var returned by Flask
+    var resonance_impedance;
+    var SWR;
+    var bandwidth;
+    var parallel_R;
+    var parallel_X;
+    var parallel_L;
+    var s11_phase_resonance;
+    var series_L;
+    var series_C;
+    var RXLresonance_label = "";
+    var recenteringwideSweepOngoing = false;
+
 
     function formatNumberWithSeparator(value) {
         return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
 
     //redirects to theory.html when button at bottom of page is clicked
-    function showTheory() {
+    function showWSPR() {
+        window.open('HB9IIUwsprReporter.html', '_blank');
+    }
+
+    function showTheory
+    () {
         window.open('theory.html', '_blank');
     }
 
+    function parseRXLLabel(label) {
+        let match = label.match(/R:\s([\d.]+)\sΩ\s\|\sX:\s([\d.]+)\sΩ\s\|\s(?:L|C):\s([\d.]+)\s(?:µH|pF)/);
+        if (match) {
+            let R = parseFloat(match[1]); // Extract Resistance (R)
+            let X = parseFloat(match[2]); // Extract Reactance (X)
+            let LC = parseFloat(match[3]); // Extract L or C
+
+            return {R, X, LC};
+        } else {
+            console.error("Parsing failed.");
+            return null;
+        }
+    }
+
     function isEqual(obj1, obj2) {
+
         return JSON.stringify(obj1) === JSON.stringify(obj2);
     }
 
@@ -160,29 +366,20 @@
         $('.toast').toast('show');
     }
 
-    function addBandwidthAnnotation(chart, bandwidthValue, qFactor, frequency, minSWR) {
+    function addRenonancePointInfoLabel(chart, bandwidthValue, qFactor, frequency, minSWR) {
+        /*
         console.log("DEBUG: Checking annotation inputs:");
         console.log("Chart object:", chart);
         console.log("Bandwidth:", bandwidthValue);
         console.log("Q Factor:", qFactor);
         console.log("Frequency:", frequency);
-
-        if (!chart || !chart.xAxis || !chart.xAxis[0]) {
-            console.error("ERROR: Chart object or xAxis is missing.");
-            return;
-        }
-
-        if (!bandwidthValue || !qFactor || !frequency) {
-            console.warn("WARNING: Missing values for annotation.");
-            return;
-        }
+        console.log("RXLresonance_label", RXLresonance_label)
+        */
 
         if (chart.customBwAnnotation) {
             console.log("DEBUG: Removing previous annotation.");
             chart.customBwAnnotation.destroy();
         }
-
-        console.log("DEBUG: Adding annotation...");
 
         // Determine the SWR color based on its value
         let swrColor;
@@ -195,19 +392,24 @@
             swrColor = "#d9534f"; // Red for SWR > 3
         }
 
+        if (displayLabelOnPlot == true) {
+            //(chart.xAxis[0].min + chart.xAxis[0].max) / 2
+            // x: frequency / 1e6, // Convert to MHz
+            //         y: chart.yAxis[1].min + (chart.yAxis[1].max - chart.yAxis[1].min) * 0.8, // 80% of full scale for y
+//y: 3.5, // Adjust position on SWR axis
+            console.log("WWWWWWWWWWWWWWW", (chart.xAxis[0].min + chart.xAxis[0].max) / 2)
+            chart.customBwAnnotation = chart.addAnnotation({
+                labels: [{
+                    useHTML: true, // Enable HTML
+                    point: {
+                        x: (chart.xAxis[0].min + chart.xAxis[0].max) / 2, // Convert to MHz
+                        y: chart.yAxis[1].min + (chart.yAxis[1].max - chart.yAxis[1].min) * 0.9, // 80% of full scale for y
+                        xAxis: 0,
+                        yAxis: 1 // SWR Y-axis index
+                    },
 
-        chart.customBwAnnotation = chart.addAnnotation({
-            labels: [{
-                useHTML: true, // Enable HTML
-                point: {
-                    x: frequency / 1e6, // Convert to MHz
-                    y: 3.5, // Adjust position on SWR axis
-                    xAxis: 0,
-                    yAxis: 1 // SWR Y-axis index
-                },
 
-
-                text: `
+                    text: `
             <div style="width: 220px; text-align: center; font-size: 24px; font-weight: bold; color: #1a436c;">
                 ${formatNumberWithSeparator(frequency)} Hz
             </div>
@@ -222,50 +424,54 @@
             <div style="width: 220px; font-size: 15px;">
                 Quality Factor (Q): <b>${qFactor}</b>
             </div>
+                        <div style="width: 220px; font-size: 13px;">
+               ${RXLresonance_label}</b>
+            </div>
         `,
 
-                backgroundColor: 'rgb(255,255,255)',
-                borderColor: 'gray',
-                shape: 'rect',
-                borderRadius: 10,
-                borderWidth: 2,
-                width:400 ,
-                style: {
-                    width: '420px', // Defines label width
-                    textAlign: 'center',
-                    whiteSpace: 'normal',  // Ensures text wraps
-                    lineHeight: '1.3'
-                }
-            }]
-        });
-        console.log("DEBUG: Annotation added successfully.");
+                    backgroundColor: 'rgb(255,255,255)',
+                    borderColor: 'gray',
+                    shape: 'rect',
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    width: 400,
+                    style: {
+                        width: '420px', // Defines label width
+                        textAlign: 'center',
+                        whiteSpace: 'normal',  // Ensures text wraps
+                        lineHeight: '1.3'
+                    }
+                }]
+            });
+            console.log("DEBUG: Annotation added successfully.");
+        }
     }
 
     function fetchGeneralConfigurationData() {
         $.getJSON('/get_general_configuration_data', function (data) {
+            AppVersion = data.AppVersion;
             WSstartFrequency = data.wide_Sweep_Start_Frequency / 1e6;
             WSstopFrequency = data.wide_Sweep_Stop_Frequency / 1e6;
             WSnumberOfPoints = data.wide_Sweep_Number_Of_Points;
             VNA_version_Info = data.VNA_version_Info;
             calibrationFilesAvailable = data.calibrationFilesAvailable;
-
+            document.getElementById("versionLabel").innerText = AppVersion;
             if (VNA_version_Info) {
                 // Show VNA version toast first
-                showToast(`VNA Version: ${VNA_version_Info}`, "success");
+                showToast(`VNA Firmware Version: ${VNA_version_Info}`, "success");
 
                 setTimeout(() => {
                     if (calibrationFilesAvailable) {
                         // Show calibration success toast
                         showToast('Calibration files are available. Ready to proceed.', "success");
-
+                        // Perform actions only once
+                        performWideSweep();
+                        setInterval(fetchWideSweepData, 800);
+                        setInterval(fetchZoomDataAndUpdateChart, 800);
                         // Both conditions are met: show content and start fetching data
                         setTimeout(() => {
                             document.getElementById('contentContainer').style.display = 'block';
 
-                            // Perform actions only once
-                            performWideSweep();
-                            setInterval(fetchWideSweepData, 800);
-                            setInterval(fetchZoomDataAndUpdateChart, 800);
                         }, 2000); // Delay for displaying content
                     } else {
                         // Show calibration missing toast and redirect
@@ -278,7 +484,7 @@
                 }, 2000); // Delay to ensure VNA version toast is visible
             } else {
                 // Show VNA not found toast
-                showToast('VNA not found, check your connections.', "error");
+                showToast('Trying to connect to your VNA.', "error");
                 // Retry fetching configuration after 3 seconds
                 setTimeout(fetchGeneralConfigurationData, 3000);
             }
@@ -293,7 +499,9 @@
 
     function createOrUpdateWideSweepChart(data) {
         const s11Data = data.s11.map((s, index) => [data.frequency[index] / 1e6, s]);
-        const minY = Math.min(-1, Math.floor(Math.min(...data.s11) - 1));
+        //var minY = Math.min(-1, Math.floor(Math.min(...data.s11) - 0.1));
+        var minY = Math.min(...data.s11);
+        var maxY = Math.max(...data.s11);
         const plotLines = [];
 
         if (data.min_frequency) {
@@ -324,6 +532,9 @@
             wideSweepChart.redraw();
         } else {
             wideSweepChart = Highcharts.chart('S11ChartContainer', {
+                exporting: {
+                    enabled: false
+                },
                 chart: {type: 'line', animation: true, marginBottom: 90, plotBackgroundColor: '#eaeaea'},
                 title: {text: null},
                 xAxis: {
@@ -340,7 +551,7 @@
                         }
                     }
                 },
-                yAxis: {title: {text: 'S11 (dB)'}, min: minY, max: 0},
+                yAxis: {title: {text: 'S11 (dB)'}, min: minY,  max: maxY},
                 legend: {enabled: false},
                 tooltip: {
                     useHTML: true,
@@ -354,103 +565,19 @@
         }
     }
 
-    function fetchWideSweepData() {
-        // XXX console.log("Fetching wide sweep data..."); // Log when the fetch starts
-        if ($('#S11ChartContainer').css('display') === 'none') {
-            // Perform your desired action here
-            // XXX console.log('S11ChartContainer is hidden., we do not call for data');
-            return
-        }
-
-        $.getJSON('/wide_sweep_data', function (data) {
-            // console.log(data)
-
-
-            createOrUpdateWideSweepChart({
-                frequency: data.ws_frequency_array,
-                s11: data.ws_s11_db_array,
-                min_s11_db: data.ws_min_s11_db,
-                min_frequency: data.ws_freq_at_min_s11
-            });
-        }).fail(function () {
-            console.error("Error fetching wide sweep data");
-        });
-    }
-
-    function fetchZoomDataAndUpdateChart() {
-        console.log("Fetching narrow sweep data..."); // Log when the fetch starts
-        $.getJSON('/zoom_data', function (data) {
-            // XXX console.log("Data received from /zoom_data endpoint:", data); // Log the data received
-            // Trigger Toast if wideSweepOngoing is true
-            if (data.recenteringwideSweepOngoing) {
-                showToast("Re-centering in progress!", "info", 5000); // Error toast for 4s
-            }
-            if (!isEqual(data, previousData)) {
-                console.log("New data detected, updating chart...");
-                narrowsweepCounter = narrowsweepCounter + 1;
-                if (narrowsweepCounter == 2) {
-                    hideWideBandChart();
-                }
-                // XXX console.log("Chart updated successfully.");
-                // Update status to show that new data arrived
-                const statusElement = document.getElementById('status');
-                statusElement.innerText = `New Data Arrived: ${new Date().toLocaleTimeString()}`;
-                statusElement.style.color = 'green';
-                newDataMessageVisible = true;
-
-                // Keep "New Data Arrived" visible for 2 seconds before switching back
-                setTimeout(() => {
-                    newDataMessageVisible = false;
-                    statusElement.innerText = `No New Data: ${new Date().toLocaleTimeString()}`;
-                    statusElement.style.color = 'gray';
-                }, 1000);
-
-                // Update the previous data reference
-                // XXX console.log("Storing current data for future comparison.");
-                previousData = data;
-                // Update the chart with new data
-                createOrUpdateZoomChart({
-                    frequency: data.ns_frequency_array,
-                    s11: data.ns_s11_db_array,
-                    swr: data.ns_swr_array,
-                    min_s11_db: data.ns_min_s11_db,
-                    min_swr: data.ns_min_swr,
-                    min_frequency: data.ns_freq_at_min_s11,
-                    f1_2: data.f1_2,
-                    f2_2: data.f2_2,
-                    f1_3: data.f1_3,
-                    f2_3: data.f2_3,
-                    bw_2: data.bw_2,
-                    bw_3: data.bw_3
-                });
-
-
-            } else if (!newDataMessageVisible) {
-                console.log("No new data detected."); // Log when no new data is detected
-                // Only update "No New Data" if "New Data Arrived" is not currently visible
-                const statusElement = document.getElementById('status');
-                statusElement.innerText = `No New Data: ${new Date().toLocaleTimeString()}`;
-                statusElement.style.color = 'gray';
-            }
-        }).fail(function (jqXHR, textStatus, errorThrown) {
-            console.error("Error fetching data from /zoom_data endpoint:", textStatus, errorThrown);
-            setTimeout(fetchZoomDataAndUpdateChart, 800); // Retry after 800 ms
-        });
-    }
-
     function createOrUpdateZoomChart(data) {
-        // Dynamically adjust the container's height as 0.8 times its width
-        const container = document.getElementById('S11ZoomChartContainer');
-        const width = container.clientWidth;
-        const height = width * 0.6; // Ratio of 0.8
+        // Dynamically adjust the container's height as 0.5 times its width
+        var container = document.getElementById('S11ZoomChartContainer');
+        var width = container.clientWidth;
+        var height = width * 0.5; // Ratio of 2:1
         container.style.height = `${height}px`;
-
+        console.log("width:", width, "   height:", height)
         // Calculate dynamic minimum y-axis value based only on the S11 data
-        var minY = Math.min(-1, Math.floor(Math.min.apply(null, data.s11) - 1));
+        var minY = Math.min(...data.s11);
+        var maxY = Math.max(...data.s11);
 
         // Initialize plot lines array for x-axis
         var plotLines = [];
-
         // Add plot line for minimum SWR frequency if available
         if (data.min_frequency !== null) {
             plotLines.push({
@@ -461,7 +588,6 @@
                 zIndex: 4
             });
         }
-
         // Add plot lines for f1 (left) SWR 2 bandwidth if available
         if (data.f1_2 !== null) {
             plotLines.push({
@@ -512,8 +638,6 @@
                 zIndex: 4
             });
         }
-
-
         if (narrowSweepChart) {
             // Ensure `swr` is valid and has elements
             const lastSWRValue = Array.isArray(data.swr) && data.swr.length > 0
@@ -527,15 +651,7 @@
 
             // Calculate the x-coordinate in MHz
             const xCoordinate = narrowSweepChart.xAxis[0].toPixels(data.min_frequency / 1e6);
-            /*
-                        // Remove any previous custom labels (to avoid duplication)
-                        if (narrowSweepChart.customBwLabel) {
-                            narrowSweepChart.customBwLabel.destroy();
-                        }
-                        if (narrowSweepChart.customBwLabelFrame) {
-                            narrowSweepChart.customBwLabelFrame.destroy();
-                        }
-            */
+
             // Calculate bandwidth and Q factor
             const bandwidthValue = Math.round(data.bw_2 / 1e3); // Convert bandwidth to kHz
             const qFactor = Math.round(data.min_frequency / data.bw_2); // Q factor (dimensionless)
@@ -547,10 +663,8 @@
                 console.log("DEBUG: min_frequency =", data.min_frequency);
                 console.log("DEBUG: min_swr =", data.min_swr);
 
-                //addBandwidthAnnotation(narrowSweepChart, bandwidthValue, qFactor, data.min_frequency);
 
-
-                addBandwidthAnnotation(narrowSweepChart, bandwidthValue, qFactor, data.min_frequency, data.min_swr);
+                addRenonancePointInfoLabel(narrowSweepChart, bandwidthValue, qFactor, data.min_frequency, data.min_swr);
 
 
             }
@@ -610,8 +724,6 @@
 
                         */
         }
-
-
         if (data.f1_2 !== null && data.f2_2 !== null) {
             const f1 = data.f1_2 / 1e6; // Convert f1_2 to MHz
             const f2 = data.f2_2 / 1e6; // Convert f2_2 to MHz
@@ -645,7 +757,6 @@
                 enabled: false
             }
         }];
-
         // Now check if the chart already exists
         if (narrowSweepChart) {
             // If chart exists, update the data and plot lines
@@ -672,7 +783,7 @@
                 chart: {
                     type: 'spline',
                     animation: true,
-                    marginBottom: 110,
+                    marginBottom: 50,
                     plotBackgroundColor: '#eaeaea',
                 },
                 title: {
@@ -692,53 +803,51 @@
                         }
                     }
                 },
-                yAxis: [{ // Primary y-axis for S11
-                    title: {
-                        text: 'S11 (dB)'
-                    },
+                yAxis: [{
+                    // Primary y-axis for S11
+                    title: { text: 'S11 (dB)' },
                     min: minY,
-                    max: 0,
-                    gridLineWidth: 0 // No gridlines for S11
-                }, { // Secondary y-axis for SWR
-                    title: {
-                        text: 'SWR'
-                    },
+                    max: maxY,
+                    endOnTick: false,
+                    startOnTick: false,
+                    gridLineWidth: 0
+                }, {
+                    // Secondary y-axis for SWR
+                    title: { text: 'SWR' },
                     opposite: true,
                     min: 1,
-                    startOnTick: false,
-                    endOnTick: false,
-                    gridLineColor: '#CCCCCC', // Keep gridlines for SWR
-                    gridLineWidth: 1, // Enable gridlines for SWR
+                    //max: 4,  // Set max explicitly if needed
+                    tickInterval: 0.1, // Explicitly define tick step (change to desired value)
+                    startOnTick: true,
+                    endOnTick: true,
+                    gridLineColor: '#CCCCCC',
+                    gridLineWidth: 1,
                     labels: {
                         formatter: function () {
                             return this.value.toFixed(1);
                         }
                     },
                     plotLines: [
-                        { // Plot line for SWR = 3
-                            color: '#ea1616', // Red
-                            dashStyle: 'LongDashDot',
-                            width: 2,
-                            value: 3, // SWR value
-                            zIndex: 4
-                        },
-                        { // Plot line for SWR = 2
-                            color: '#3583d5', // Green
-                            dashStyle: 'ShortDash',
-                            width: 2,
-                            value: 2, // SWR value
-                            zIndex: 4
-                        }
+                        { color: '#ea1616', dashStyle: 'LongDashDot', width: 2, value: 3, zIndex: 4 },
+                        { color: '#3583d5', dashStyle: 'ShortDash', width: 2, value: 2, zIndex: 4 }
                     ]
                 }],
                 legend: {
                     enabled: true,
-                    y: -5,
-                    itemStyle: { // Ensuring good separation in legend
-                        fontSize: '18px',
+                    floating: true,  // Allows positioning inside the plot area
+                    align: 'left',   // Align to the left side
+                    verticalAlign: 'bottom', // Position at the bottom
+                    x: 75,  // Adjusts horizontal offset
+                    y: -45, // Adjusts vertical offset
+                    backgroundColor: 'rgba(255, 255, 255, 0.7)', // Semi-transparent background
+                    borderWidth: 1,
+                    borderColor: '#CCCCCC',
+                    itemStyle: {
+                        fontSize: '14px',
                         fontWeight: 'normal'
                     }
                 },
+
                 tooltip: {
                     useHTML: true,
                     formatter: function () {
@@ -775,6 +884,163 @@
         }
     }
 
+    function fetchWideSweepData() {
+        // XXX console.log("Fetching wide sweep data..."); // Log when the fetch starts
+        if ($('#S11ChartContainer').css('display') === 'none') {
+            // Perform your desired action here
+            // XXX console.log('S11ChartContainer is hidden., we do not call for data');
+            return
+        }
+
+        $.getJSON('/wide_sweep_data', function (data) {
+            // console.log(data)
+
+
+            createOrUpdateWideSweepChart({
+                frequency: data.ws_frequency_array,
+                s11: data.ws_s11_db_array,
+                min_s11_db: data.ws_min_s11_db,
+                min_frequency: data.ws_freq_at_min_s11
+            });
+        }).fail(function () {
+            console.error("Error fetching wide sweep data");
+        });
+    }
+
+    function fetchZoomDataAndUpdateChart() {
+        console.log("Fetching narrow sweep data..."); // Log when the fetch starts
+        $.getJSON('/zoom_data', function (data) {
+            if (!data || !data.ns_freq_at_min_s11 || !data.resonance_impedance || !data.ns_min_swr) {
+                console.log("ZOOM Data is missing or incomplete.");
+                return;
+            }
+            resonance_frequency = data.ns_freq_at_min_s11;
+            resonance_impedance = data.resonance_impedance;
+            SWR = data.ns_min_swr;
+            bandwidth = data.bw_2;
+            parallel_R = data.parallel_R;
+            parallel_X = data.parallel_X;
+            parallel_L = data.parallel_L;
+            s11_phase_resonance = data.s11_phase_resonance;
+            series_L = data.series_L;
+            series_C = data.series_C;
+            recenteringWideSweepOngoing = data.recenteringWideSweepOngoing;
+            quality_factor = data.quality_factor;
+            reactance_type = data.reactance_type;
+
+            if (series_L !== null && series_L > 0) {
+                SeriesValue = series_L.toFixed(3);  // Format to 3 decimals
+                SeriesUnit = " nH";  // Nanohenries
+            } else if (series_C !== null && series_C > 0) {
+                SeriesValue = series_C.toFixed(4);  // Format to 4 decimals for capacitance
+                SeriesUnit = " nF";  // Nanofarads
+            } else {
+                SeriesValue = "N/A";  // If neither L nor C is valid
+                SeriesUnit = "";
+            }
+
+
+
+            debugBelow = true;
+            if (debugBelow) {
+                console.log("Data received from /zoom_data endpoint:", data); // Log the data receivedconsole.log("resonance_impedance:", resonance_impedance);
+
+                console.log("SWR:", SWR);
+                console.log("bandwidth:", bandwidth);
+                console.log("resonance_frequency:", formatNumberWithSeparator(resonance_frequency));
+
+                console.log("quality_factor:", quality_factor);
+
+                console.log("parallel_R:", parallel_R);
+                console.log("parallel_X:", parallel_X);
+                console.log("parallel_L:", parallel_L);
+                console.log("s11_phase_resonance:", s11_phase_resonance);
+                console.log("series_L:", series_L);
+                console.log("series_C:", series_C);
+                console.log("recenteringWideSweepOngoing:", recenteringWideSweepOngoing);
+            }
+
+            // Trigger Toast if wideSweepOngoing is true
+            if (recenteringWideSweepOngoing) {
+                showToast("Re-centering in progress!", "info", 5000); // Error toast for 4s
+            }
+            if (!isEqual(data, previousData)) {
+                // Update the previous data reference
+                previousData = data;
+                console.log("New data detected, updating chart...");
+                narrowsweepCounter = narrowsweepCounter + 1;
+                if (narrowsweepCounter == 2) {
+                    hideWideBandChart();
+                }
+                // XXX console.log("Chart updated successfully.");
+                // Update status to show that new data arrived
+                const statusElement = document.getElementById('status');
+                statusElement.innerText = `New Data Arrived: ${new Date().toLocaleTimeString()}`;
+                statusElement.style.color = 'green';
+                newDataMessageVisible = true;
+
+                // Keep "New Data Arrived" visible for 2 seconds before switching back
+                setTimeout(() => {
+                    newDataMessageVisible = false;
+                    statusElement.innerText = `No New Data: ${new Date().toLocaleTimeString()}`;
+                    statusElement.style.color = 'gray';
+                }, 1000);
+
+                console.log("DEBUG: Adding annotation...");
+                document.getElementById("ResonanceFrequencyLabel").innerText = formatNumberWithSeparator(resonance_frequency) + " Hz";
+                document.getElementById("SWRlabel").innerText = "SWR: " + SWR.toFixed(1);
+                document.getElementById("BandwidthLabel").innerText = (bandwidth / 1000).toFixed(1) + " kHz";
+                document.getElementById("QualityFactorLabel").innerText = quality_factor;
+                document.getElementById("ImpedanceLabel").innerText = resonance_impedance;
+
+
+                document.getElementById("ReactanceTypeLabel").innerText = reactance_type;
+                document.getElementById("ParallelRlabel").innerText = parallel_R.toFixed(1) + " Ω";
+                document.getElementById("ParallelXlabel").innerText = parallel_X.toFixed(1) + " Ω";
+                document.getElementById("ParallelLlabel").innerText = parallel_L + " µH";
+
+                // Update the HTML element
+                document.getElementById("SeriesLabel").innerText = SeriesValue + SeriesUnit;
+                document.getElementById("PhaseS11Label").innerText = s11_phase_resonance;
+
+
+                if (reactance_type === "Inductive") {  // Use === for strict comparison
+                    document.getElementById("seriesType").innerText = "Series L";
+                } else if (reactance_type === "Capacitive") {
+                    document.getElementById("seriesType").innerText = "Series C";
+                }
+
+
+                console.log("Updating Narrow Sweep Plot");
+                createOrUpdateZoomChart({
+                    frequency: data.ns_frequency_array,
+                    s11: data.ns_s11_db_array,
+                    swr: data.ns_swr_array,
+                    min_s11_db: data.ns_min_s11_db,
+                    min_swr: data.ns_min_swr,
+                    min_frequency: data.ns_freq_at_min_s11,
+                    f1_2: data.f1_2,
+                    f2_2: data.f2_2,
+                    f1_3: data.f1_3,
+                    f2_3: data.f2_3,
+                    bw_2: data.bw_2,
+                    bw_3: data.bw_3
+                });
+
+
+            } else if (!newDataMessageVisible) {
+                console.log("No new data detected."); // Log when no new data is detected
+                // Only update "No New Data" if "New Data Arrived" is not currently visible
+                const statusElement = document.getElementById('status');
+                statusElement.innerText = `No New Data: ${new Date().toLocaleTimeString()}`;
+                statusElement.style.color = 'gray';
+            }
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+            console.error("Error fetching data from /zoom_data endpoint:", textStatus, errorThrown);
+            setTimeout(fetchZoomDataAndUpdateChart, 800); // Retry after 800 ms
+        });
+    }
+
     function hideWideBandChart() {
         $('#S11ChartContainerTitle, #S11ChartContainer').fadeOut(2000, function () {
             console.log('Heading and S11ChartContainer are now hidden.');
@@ -786,8 +1052,115 @@
 
     });
 
+    /*
+    window.addEventListener("resize", function () {
+        let browserWidth = window.innerWidth;
+        console.log("Browser width:", browserWidth);
+
+        // ✅ Fixing incorrect condition logic
+        if (browserWidth < 600) {
+            console.log("Small screen detected. Adjusting layout...");
+            displayLabelOnPlot = false;
+        } else if (browserWidth < 1000) {
+            console.log("Medium screen detected. Moderate adjustments...");
+            displayLabelOnPlot = false;
+        } else {
+            console.log("Large screen detected. Using full-size layout...");
+            displayLabelOnPlot = true;
+        }
+
+        // ✅ Ensure Highcharts container resizes correctly
+        let container = document.getElementById("S11ZoomChartContainer");
+        if (container) {
+            container.style.width = "100%";
+            container.style.height = `${window.innerHeight * 0.5}px`;  // Adjust height dynamically
+        }
+
+        // ✅ Force Highcharts to resize dynamically
+        if (wideSweepChart) {
+            wideSweepChart.reflow();
+        }
+        if (narrowSweepChart) {
+            narrowSweepChart.reflow();
+        }
+    });
+
+
+
+
+
+    let resizeTimeout;
+    window.addEventListener("resize", function () {
+        clearTimeout(resizeTimeout);
+
+        resizeTimeout = setTimeout(() => {
+            let browserWidth = window.innerWidth;
+            let browserHeight = window.innerHeight;
+            console.log(`Browser width: ${browserWidth}, height: ${browserHeight}`);
+
+            // ✅ Ensure Highcharts container resizes correctly
+            let container = document.getElementById("S11ZoomChartContainer");
+            if (container) {
+                container.style.width = "100%";
+                container.style.height = `${window.innerHeight * 0.5}px`; // Dynamically adjust height
+            }
+
+            // ✅ If chart exists, resize dynamically
+            if (narrowSweepChart) {
+                let newChartWidth = container.clientWidth;
+                let newChartHeight = container.clientHeight;
+
+                narrowSweepChart.setSize(newChartWidth, newChartHeight, false); // 🔹 Resize both width & height
+                narrowSweepChart.reflow(); // 🔹 Ensure proper redraw
+            }
+
+            // ✅ Re-create chart if height changed significantly
+            if (previousHeight !== browserHeight) {
+                console.log("Significant height change detected! Recreating chart...");
+                createOrUpdateZoomChart(lastChartData);  // Rebuild with last known data
+            }
+
+            previousHeight = browserHeight;  // Store last height for comparison
+        }, 300); // Debounce to prevent too many updates
+    });
+*/
+
 </script>
-        <script src="../static/js/popper.min.js"></script>
-        <script src="../static/js/bootstrap.min.js"></script>
-    </body>
+<script src="../static/js/popper.min.js"></script>
+<script src="../static/js/bootstrap.min.js"></script>
+
+
+
+
+
+<!-- WSPR Modal -->
+<div class="modal fade" id="wsprModal" tabindex="-1" aria-labelledby="wsprModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="wsprModalLabel">🚀 Coming Soon!</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p style="font-size: 18px;">
+                    Stay Tuned! The next version will include a personalized WSPR reporter <br>
+                    for those who connect a WSPR transmitter to their Magnetic Loop Antenna <br>
+                    to monitor who could receive the beacons.
+                </p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Got It!</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+</body>
 </html>

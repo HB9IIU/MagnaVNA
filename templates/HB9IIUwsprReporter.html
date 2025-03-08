@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head data-pg-collapsed>
+        <meta charset="UTF-8">
+        <meta content="width=device-width, initial-scale=1.0" name="viewport">
+        <title>HB9IIU WSPR MONITOR</title>
+        <!-- Link to the external configuration file -->
+        <script src="../static/wsprConfig.js"></script>
+
+
+        <!-- Bootstrap CSS -->
+        <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Leaflet CSS -->
+        <link crossorigin="" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+        <!-- noUiSlider CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/nouislider/distribute/nouislider.min.css" rel="stylesheet">
+        <!-- Highcharts CSS -->
+        <script src="https://code.highcharts.com/highcharts.js"></script>
+        <script src="https://code.highcharts.com/highcharts-more.js"></script>
+        <script src="https://code.highcharts.com/modules/exporting.js"></script>
+        <script src="https://code.highcharts.com/modules/export-data.js"></script>
+        <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+        <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/nouislider/distribute/nouislider.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/wnumb/wNumb.js"></script>
+        <script crossorigin="" src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/leaflet.geodesic"></script>
+        <script src="https://unpkg.com/@joergdietrich/leaflet.terminator@1.0.0/L.Terminator.js"></script>
+        <style>body { margin: 20px; } #map { height: 600px; margin-bottom: 20px; } .slider { width: 100%; margin: 20px 0; } .noUi-tooltip { background: #000; color: #fff; padding: 5px 10px; border-radius: 5px; } .noUi-handle-lower .noUi-tooltip { top: 100%; bottom: auto; transform: translateY(10px); } .noUi-handle-upper .noUi-tooltip { bottom: 100%; top: auto; transform: translateY(-10px); } .center-text { text-align: center; } th, td { text-align: center; } .spinner { display: none; position: fixed; top: 50%; left: 50%; z-index: 1000; width: 100px; height: 100px; margin: -50px 0 0 -50px; border: 16px solid #f3f3f3; border-radius: 50%; border-top: 16px solid #3498db; animation: spin 2s linear infinite; } @keyframes spin { 0% {  transform: rotate(0deg); }  100% {  transform: rotate(360deg); } } .search-box { width: 16ch; display: inline-block; } .legend { background-color: white; padding: 10px; border-radius: 5px; box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); line-height: 1.6; } .legend input[type=checkbox] { margin-right: 5px; } .legend .band-label { margin-left: 10px; } .table-container { height: 400px; overflow-y: auto; margin-bottom: 20px; }</style>
+        <!-- Cesium JS -->
+        <script src="https://cesium.com/downloads/cesiumjs/releases/1.85/Build/Cesium/Cesium.js"></script>
+        <link href="https://cesium.com/downloads/cesiumjs/releases/1.85/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+        <style>body { margin: 20px; } #cesiumContainer { height: 600px; margin-bottom: 20px; } .slider { width: 100%; margin: 20px 0; }</style>
+        <link href="https://fonts.googleapis.com/css?family=ABeeZee&display=swap" rel="stylesheet">
+        <script src="../static/wsprConfig.js"></script>
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="mt-5" data-pg-collapsed style="font-family: 'ABeeZee', sans-serif; font-size: 30px; text-align: center; font-weight: 700;">WSPR Reporter for Tx Station <span id="txSignLabel"></span></h1>
+            <div class="mb-4" data-pg-collapsed id="map"></div>
+            <div data-pg-collapsed id="cesiumContainer" style="display: none;"></div>
+            <h4 id="station-header" style="font-family: 'ABeeZee', sans-serif; font-size: 20px; text-align: center;">Station
+        Heard By 'Callsign'</h4>
+            <div class="row" data-pg-collapsed>
+                <div class="col-md-2 d-flex align-items-center">
+                    <input class="form-control search-box" id="searchBox" placeholder="Search Callsigns..." type="text">
+                </div>
+                <div class="col-md-9">
+                    <div class="slider" id="time-slider"></div>
+                </div>
+                <div class="col-md-1 d-flex align-items-center">
+                    <button class="btn btn-light" id="refreshButton" type="button">Refresh</button>
+                </div>
+            </div>
+            <div class="row" data-pg-collapsed>
+                <div class="col-md-3">
+                    <p id="slotDuration">Slot duration: 00:00</p>
+                </div>
+                <div class="col-md-2">
+                    <p id="totalSpots">Total spots: 0</p>
+                </div>
+                <div class="col-md-3">
+                    <p id="uniqueCallsigns">Unique callsigns: 0</p>
+                </div>
+                <div class="col-md-4">
+                    <p id="maxDistance">Max. distance: 0 km</p>
+                </div>
+            </div>
+            <div class="table-container" data-pg-collapsed>
+                <div class="table-responsive" id="filtered-table">
+                    <table class="table table-striped">
+                        <thead id="filtered-table-head">
+</thead>
+                        <tbody id="filtered-wspr-data">
+</tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="row">
+                <h4 style="font-family: 'ABeeZee', sans-serif; font-size: 20px; text-align: center;">Histograms</h4>
+            </div>
+        </div>
+        <div class="row">
+            <div class="container mt-4" data-pg-collapsed>
+                <div class="chart-container" id="container-band3" style="display: none;"></div>
+                <div class="chart-container" id="container-band7" style="display: none;"></div>
+                <div class="chart-container" id="container-band14" style="display: none;"></div>
+                <div class="chart-container" id="container-band21" style="display: none;"></div>
+                <div class="chart-container" id="container-band28" style="display: none;"></div>
+                <div class="text-center mt-4">
+                    <h3>Select number of days:</h3>
+                    <div aria-label="Checkbox group" class="btn-group" role="group">
+                        <label style="margin-left: 15px; margin-right: 15px;">
+                            <input class="days-checkbox" type="checkbox" value="1"> 1 day
+                        </label>
+                        <label style="margin-left: 20px; margin-right: 20px;">
+                            <input checked class="days-checkbox" type="checkbox" value="2"> 2 days
+                        </label>
+                        <label style="margin-left: 20px; margin-right: 20px;">
+                            <input class="days-checkbox" type="checkbox" value="3"> 3 days
+                        </label>
+                        <label style="margin-left: 20px; margin-right: 20px;">
+                            <input class="days-checkbox" type="checkbox" value="5"> 5 days
+                        </label>
+                        <label style="margin-left: 20px; margin-right: 20px;">
+                            <input class="days-checkbox" type="checkbox" value="10"> 10 days
+                        </label>
+                        <label style="margin-left: 20px; margin-right: 20px;">
+                            <input class="days-checkbox" type="checkbox" value="30"> 30 days
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="spinner" id="loadingSpinner"></div>
+        </div>
+        <script>
+
+    const apiUrl = 'https://db1.wspr.live:443';
+    //const txSign = WSPR_tx_Callsign;   // from config file
+
+    const cleanedDataForMaps = [];
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const limit = 10000000000; // to set lower when debugging to shorten SQL request returned dat
+
+        document.getElementById('txSignLabel').textContent = WSPR_tx_Callsign;
+
+        const bandMapping = {
+            '-1': 'LF',
+            '0': 'MF',
+            '1': '160m (1.8 MHz)',
+            '3': '80m (3.5 MHz)',
+            '5': '60m (5 MHz)',
+            '7': '40m (7 MHz)',
+            '10': '30m (10 MHz)',
+            '14': '20m (14 MHz)',
+            '18': '17m (18 MHz)',
+            '21': '15m (21 MHz)',
+            '24': '12m (24 MHz)',
+            '28': '10m (28 MHz)',
+            '50': '6m (50 MHz)',
+            '70': '4m (70 MHz)',
+            '144': '2m (144 MHz)',
+            '432': '70cm (432 MHz)',
+            '1296': '23cm (1296 MHz)'
+        };
+        const bandColorMapping = {
+            '-1': '#800000',
+            '0': '#FF4500',
+            '1': '#FFD700',
+            '3': '#32CD32',
+            '5': '#008000',
+            '7': '#0000FF',
+            '10': '#4B0082',
+            '14': '#EE82EE',
+            '18': '#8A2BE2',
+            '21': '#FF1493',
+            '24': '#FF69B4',
+            '28': '#CD5C5C',
+            '50': '#4682B4',
+            '70': '#00FFFF',
+            '144': '#2E8B57',
+            '432': '#D2691E',
+            '1296': '#FF6347'
+        };
+        const headerMapping = {
+            'date': 'Date',
+            'time': 'Time',
+            'band': 'Band',
+            'rx_sign': 'Callsign',
+            'rx_loc': 'Locator',
+            'distance': 'Distance [km]',
+            'frequency': 'Frequency [Hz]',
+            'snr': 'SNR [dB]',
+            'drift': 'Drift [Hz]'
+        };
+
+
+        let selectedBands = Object.keys(bandMapping).map(Number); // Initially select all bands
+
+
+        const slider = document.getElementById('time-slider');
+        const spinner = document.getElementById('loadingSpinner');
+        const searchBox = document.getElementById('searchBox');
+        const refreshButton = document.getElementById('refreshButton');
+
+        const map = L.map('map', {
+            attributionControl: false,
+            zoomControl: false
+        }).setView([WSPR_tx_Latitude, WSPR_tx_Longitude], 2);
+        const mapLayerGroup = L.featureGroup().addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        const slotDurationElement = document.getElementById('slotDuration');
+        const totalSpotsElement = document.getElementById('totalSpots'); // Get the totalSpots element
+        const uniqueCallsignsElement = document.getElementById('uniqueCallsigns'); // Get the uniqueCallsigns element
+        const maxDistanceElement = document.getElementById('maxDistance'); // Get the maxDistance element
+
+        noUiSlider.create(slider, {
+            start: [-120, 0],
+            connect: true,
+            range: {
+                'min': -1440,
+                'max': 0
+            },
+            tooltips: [wNumb({decimals: 0}), wNumb({decimals: 0})],
+            format: wNumb({decimals: 0, thousand: ''})
+        });
+
+
+        slider.noUiSlider.on('update', function (values, handle) {
+            const startMinutes = parseInt(values[0]);
+            const endMinutes = parseInt(values[1]);
+            updateSlotDuration(startMinutes, endMinutes);
+            const lowerTooltip = slider.querySelector('.noUi-handle-lower .noUi-tooltip');
+            const upperTooltip = slider.querySelector('.noUi-handle-upper .noUi-tooltip');
+            if (lowerTooltip) {
+                lowerTooltip.innerHTML = formatSliderValueToTime(startMinutes);
+            }
+            if (upperTooltip) {
+                upperTooltip.innerHTML = formatSliderValueToTime(endMinutes);
+            }
+        });
+
+        slider.noUiSlider.on('set', function (values, handle) {
+            const startMinutes = parseInt(values[0]);
+            const endMinutes = parseInt(values[1]);
+            updateSlotDuration(startMinutes, endMinutes);
+            fetchData(startMinutes, endMinutes);
+        });
+
+        searchBox.addEventListener('input', function () {
+            filterTable(searchBox.value.toUpperCase());
+        });
+
+        refreshButton.addEventListener('click', function () {
+            const values = slider.noUiSlider.get();
+            const startMinutes = parseInt(values[0]);
+            const endMinutes = parseInt(values[1]);
+            fetchData(startMinutes, endMinutes);
+        });
+
+        function fetchData(startMinutes, endMinutes) {
+            mapLayerGroup.clearLayers();
+            const query = `
+                SELECT * FROM wspr.rx
+                WHERE time > subtractMinutes(now(), ${-startMinutes})
+                AND time <= subtractMinutes(now(), ${-endMinutes})
+                AND tx_sign = '${WSPR_tx_Callsign}'
+                ORDER BY time DESC
+                LIMIT ${limit} FORMAT JSON
+            `;
+            const url = `${apiUrl}?query=${encodeURIComponent(query)}`;
+            //console.log('Executing query:', query);
+            spinner.style.display = 'block';
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(jsonData => {
+                    console.log('Fetched data:', jsonData);
+                    const data = jsonData.data;
+                    if (data.length === 0) {
+                        renderErrorMessage('No data available');
+                        return;
+                    }
+                    // here we remove duplicate rx_signs for faster plotting
+                    const seen = new Set();
+                    data.forEach(row => {
+                        const identifier = `${row.rx_lat}-${row.rx_lon}-${row.band}-${row.rx_sign}`; // Create a unique key based on relevant fields
+
+                        // If the identifier hasn't been seen yet, add it to the cleanedData array and the seen set
+                        if (!seen.has(identifier)) {
+                            cleanedDataForMaps.push(row);
+                            seen.add(identifier);
+                        }
+                    });
+
+                    renderFilteredTable(data);
+                    updateLeafletMap(cleanedDataForMaps.filter(row => selectedBands.includes(row.band)));
+                    //XXXXXXX
+                    updateCesiumMap(cleanedDataForMaps.filter(row => selectedBands.includes(row.band)));
+
+                    updateLegend(data);
+                    updateTotalSpots(data); // Update the total spots
+                    updateUniqueCallsigns(data); // Update the unique callsigns
+                    updateMaxDistance(data); // Update the max distance
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    renderErrorMessage(`Error fetching data: ${error.message}`);
+                })
+                .finally(() => {
+                    spinner.style.display = 'none';
+                });
+        }
+
+        function renderFilteredTable(data) {
+            const filteredTableHead = document.getElementById('filtered-table-head');
+            const filteredTableBody = document.getElementById('filtered-wspr-data');
+            filteredTableHead.innerHTML = '';
+            filteredTableBody.innerHTML = '';
+
+            const headers = ['date', 'time', 'band', 'rx_sign', 'rx_loc', 'distance', 'frequency', 'snr', 'drift'];
+            const tr = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = headerMapping[header] || header;
+                if (header === 'time' || header === 'date') {
+                    th.classList.add('time-column');
+                }
+                tr.appendChild(th);
+            });
+            filteredTableHead.appendChild(tr);
+
+            const numberFormatter = new Intl.NumberFormat();
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                headers.forEach(header => {
+                    const td = document.createElement('td');
+                    if (header === 'date') {
+                        const utcDate = new Date(row['time'] + 'Z');
+                        td.textContent = `${utcDate.getDate().toString().padStart(2, '0')}:${(utcDate.getMonth() + 1).toString().padStart(2, '0')}:${utcDate.getFullYear()}`;
+                    } else if (header === 'time') {
+                        const utcDate = new Date(row['time'] + 'Z');
+                        const localTime = utcDate.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        });
+                        td.textContent = localTime;
+                        td.classList.add('time-column');
+                    } else if (header === 'band') {
+                        td.textContent = bandMapping[row[header]] || row[header];
+                    } else if (header === 'distance') {
+                        td.textContent = numberFormatter.format(row[header]);
+                    } else if (header === 'frequency') {
+                        td.textContent = numberFormatter.format(row[header]);
+                    } else if (header === 'rx_sign') {
+                        td.innerHTML = `<a href="https://www.qrz.com/db/${row[header]}" target="_blank">${row[header]}</a>`;
+                    } else {
+                        td.textContent = row[header];
+                    }
+                    tr.appendChild(td);
+                });
+                filteredTableBody.appendChild(tr);
+            });
+
+            updateTotalSpots(data); // Update the total spots
+            updateUniqueCallsigns(data); // Update the unique callsigns
+            updateMaxDistance(data); // Update the max distance
+        }
+
+        function updateTotalSpots(data) {
+            const totalSpots = data.length; // Count the number of rows in the data
+            totalSpotsElement.textContent = `Total spots: ${totalSpots}`;
+        }
+
+        function updateUniqueCallsigns(data) {
+            const uniqueCallsigns = new Set(data.map(row => row.rx_sign)).size; // Count the number of unique callsigns
+            uniqueCallsignsElement.textContent = `Unique callsigns: ${uniqueCallsigns}`;
+        }
+
+        function updateMaxDistance(data) {
+            const maxDistance = Math.max(...data.map(row => row.distance)); // Find the maximum distance
+            const formattedMaxDistance = new Intl.NumberFormat().format(maxDistance); // Format the max distance with thousands separators
+            maxDistanceElement.textContent = `Max. distance: ${formattedMaxDistance} km`;
+        }
+
+        function renderErrorMessage(message) {
+            const filteredTableBody = document.getElementById('filtered-wspr-data');
+            filteredTableBody.innerHTML = `<tr><td colspan="9">${message}</td></tr>`;
+            updateTotalSpots([]); // Update the total spots to 0
+            updateUniqueCallsigns([]); // Update the unique callsigns to 0
+            updateMaxDistance([]); // Update the max distance to 0
+        }
+
+        function formatSliderValueToTime(value) {
+            const now = new Date();
+            const minutesAgo = Math.abs(value);
+            const targetTime = new Date(now.getTime() - minutesAgo * 60 * 1000);
+            return targetTime.toTimeString().slice(0, 5);
+        }
+
+        function filterTable(searchText) {
+            const rows = document.querySelectorAll('#filtered-wspr-data tr');
+            rows.forEach(row => {
+                const callsign = row.querySelector('td:nth-child(4)').textContent.toUpperCase();
+                if (callsign.startsWith(searchText)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function updateLegend(data) {
+            if (map.legend) {
+                map.legend.remove();
+            }
+
+            map.legend = L.control({position: 'bottomright'});
+            map.legend.onAdd = function (map) {
+                const div = L.DomUtil.create('div', 'legend');
+                div.innerHTML = '<strong>Bands</strong><br>';
+                const bandsInData = [...new Set(data.map(row => row.band))];
+                bandsInData.sort((a, b) => a - b); // Sort the bands numerically
+                bandsInData.forEach(band => {
+                    const isChecked = selectedBands.includes(band) ? 'checked' : '';
+                    div.innerHTML += `
+                        <div>
+                            <input type="checkbox" id="band_${band}" class="band-checkbox" data-band="${band}" ${isChecked}>
+                            <span class="band-label" style="color: ${bandColorMapping[band.toString()] || '#000000'}">${bandMapping[band.toString()] || band}</span>
+                        </div>`;
+                });
+                return div;
+            };
+            map.legend.addTo(map);
+
+            document.querySelectorAll('.band-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    selectedBands = Array.from(document.querySelectorAll('.band-checkbox:checked')).map(cb => parseInt(cb.dataset.band, 10));
+                    updateDisplayedData();
+                });
+            });
+        }
+
+        function updateDisplayedData() {
+            const values = slider.noUiSlider.get();
+            const startMinutes = parseInt(values[0]);
+            const endMinutes = parseInt(values[1]);
+
+            const query = `
+                SELECT * FROM wspr.rx
+                WHERE time > subtractMinutes(now(), ${-startMinutes})
+                AND time <= subtractMinutes(now(), ${-endMinutes})
+                AND tx_sign = '${WSPR_tx_Callsign}'
+                ORDER BY time DESC
+                LIMIT ${limit} FORMAT JSON
+            `;
+            const url = `${apiUrl}?query=${encodeURIComponent(query)}`;
+
+            console.log('Executing query for updating displayed data:', query);
+
+            spinner.style.display = 'block';
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(jsonData => {
+                    console.log('Fetched data for updating displayed data:', jsonData);
+                    let data = jsonData.data;
+
+                    // Filter data based on selected bands
+                    if (selectedBands.length > 0) {
+                        data = data.filter(row => selectedBands.includes(row.band));
+                    } else {
+                        // If no bands are selected, clear the map and the table
+                        data = [];
+                    }
+
+                    renderFilteredTable(data);
+                    mapLayerGroup.clearLayers();
+                    updateLeafletMap(data);
+                    updateCesiumMap(data.filter(row => selectedBands.includes(row.band)));
+
+
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    renderErrorMessage(`Error fetching data: ${error.message}`);
+                })
+                .finally(() => {
+                    spinner.style.display = 'none';
+                });
+        }
+
+        function updateLeafletMap(data) {
+            mapLayerGroup.clearLayers(); // Ensure map is cleared before updating
+            data.forEach(row => {
+                const rxLat = row.rx_lat;
+                const rxLon = row.rx_lon;
+                const band = row.band;
+                const lineColor = bandColorMapping[band] || '#000000';
+
+                if (rxLat && rxLon) {
+                    L.geodesic([
+                        [WSPR_tx_Latitude, WSPR_tx_Longitude],
+                        [rxLat, rxLon]
+                    ], {
+                        weight: 2,
+                        color: lineColor,
+                        opacity: 0.7
+                    }).addTo(mapLayerGroup);
+
+                    L.circleMarker([rxLat, rxLon], {
+                        color: '#000000',
+                        weight: 1,
+                        fillColor: '#FFFF00',
+                        fillOpacity: 1,
+                        radius: 3
+                    }).addTo(mapLayerGroup).bindPopup(`<b>Callsign:</b> <a href="https://www.qrz.com/db/${row.rx_sign}" target="_blank">${row.rx_sign}</a><br><b>Locator:</b> ${row.rx_loc}<br><b>Distance:</b> ${row.distance} km<br><b>Frequency:</b> ${row.frequency} Hz<br><b>SNR:</b> ${row.snr} dB<br><b>Drift:</b> ${row.drift} Hz`);
+                }
+            });
+
+            if (mapLayerGroup.getLayers().length > 0) {
+                map.fitBounds(mapLayerGroup.getBounds());
+            }
+        }
+
+
+        function updateCesiumMap(data) {
+
+
+            if (cesiumAccessToken == "") {
+                console.log("By-passing as no Cesium API token")
+                return;
+            }
+            viewer.entities.removeAll();  // This will clear all entities from the viewer
+
+            data.forEach(row => {
+                const rxLat = row.rx_lat;
+                const rxLon = row.rx_lon;
+                const band = row.band;
+                const lineColor = bandColorMapping[band] || '#000000';
+                if (rxLat && rxLon) {
+                    // Create the polyline (line between two points)
+                    var startPosition = Cesium.Cartesian3.fromDegrees(WSPR_tx_Longitude, WSPR_tx_Latitude);
+                    var endPosition = Cesium.Cartesian3.fromDegrees(rxLon, rxLat);
+                    viewer.entities.add({
+                        polyline: {
+                            positions: [startPosition, endPosition], // The coordinates for the line
+                            width: 2, // Width of the line
+                            //material: Cesium.Color.RED // Color of the line
+                            material: Cesium.Color.fromCssColorString(lineColor) // Color of the line in hex format
+//XXXXX
+                        }
+                    });
+                }
+            });
+        }
+
+
+        function updateSlotDuration(startMinutes, endMinutes) {
+            const durationInMinutes = Math.abs(startMinutes - endMinutes);
+            const hours = Math.floor(durationInMinutes / 60);
+            const minutes = durationInMinutes % 60;
+            slotDurationElement.textContent = `Slot duration: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+
+
+        // Event listener for double-click to zoom to fit all points
+        map.on('dblclick', function () {
+            if (mapLayerGroup.getLayers().length > 0) {
+                map.fitBounds(mapLayerGroup.getBounds());
+            }
+        });
+
+
+        // Set all checkboxes to selected by default on page load
+        selectedBands = Object.keys(bandMapping).map(Number);
+        fetchData(-120, 0);
+
+        // Initialize the terminator layer
+        var terminator = L.terminator({
+            color: 'black', // Line color
+            weight: 1, // Line weight
+            opacity: 0.0, // Line opacity
+            fillColor: 'black', // Fill color
+            fillOpacity: 0.1 // Fill opacity
+        }).addTo(map);
+
+        // Function to update the terminator line
+        function updateTerminator() {
+            terminator.setTime();
+        }
+
+        // Update the terminator every 0.5 seconds
+        setInterval(updateTerminator, 500);
+
+        // Custom control for toggling terminator
+        L.Control.ToggleTerminator = L.Control.extend({
+            options: {
+                position: 'topright'
+            },
+
+            onAdd: function (map) {
+                var container = L.DomUtil.create('div', 'leaflet-control-button');
+                container.title = 'Toggle Night Overlay';
+
+                var button = L.DomUtil.create('button', '', container);
+                button.innerHTML = 'Toggle Night';
+
+                L.DomEvent.on(button, 'click', function () {
+                    if (map.hasLayer(terminator)) {
+                        map.removeLayer(terminator);
+                        button.innerHTML = 'Show Night';
+                    } else {
+                        map.addLayer(terminator);
+                        button.innerHTML = 'Hide Night';
+                    }
+                });
+
+                return container;
+            }
+        });
+
+        // Add the custom control to the map
+        L.control.toggleTerminator = function (opts) {
+            return new L.Control.ToggleTerminator(opts);
+        };
+        L.control.toggleTerminator().addTo(map);
+
+    });
+
+    document.getElementById("station-header").innerHTML = `Stations that heard ${WSPR_tx_Callsign} WSPR beacon`;
+
+    let days_back = 2; // Default number of days
+
+
+    // Function to fetch data and render chart
+    async function fetchDataXXXXOLD(bandFilter, days_back) {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        const hoursSinceStartOfToday = (now - startOfToday) / (1000 * 60 * 60);
+
+        const totalHours = 24 * days_back + hoursSinceStartOfToday;
+        console.log("Hours Since Midnight: ",hoursSinceStartOfToday)
+
+        const query = `
+                SELECT time, COUNT(*) as count
+                FROM rx
+                WHERE tx_sign = '${WSPR_tx_Callsign}' AND time > subtractHours(now(), ${totalHours})
+                AND band = ${bandFilter}
+                GROUP BY time
+                ORDER BY time ASC
+                FORMAT JSON
+            `;
+        const url = `${apiUrl}?query=${encodeURIComponent(query)}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const jsonData = await response.json();
+            console.log(`Retuned RAW Data for Band ${bandFilter}:`, jsonData.data); // Log the data for debugging
+            return jsonData.data;
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            throw error;
+        }
+    }
+
+
+    async function fetchData(bandFilter, days_back) {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        const hoursSinceStartOfToday = (now - startOfToday) / (1000 * 60 * 60);
+        const totalHours = 24 * days_back + hoursSinceStartOfToday;
+
+        console.log("Hours Since Midnight: ", hoursSinceStartOfToday);
+
+        const query = `
+        SELECT time, COUNT(*) as count
+        FROM rx
+        WHERE tx_sign = '${WSPR_tx_Callsign}' AND time > subtractHours(now(), ${totalHours})
+        AND band = ${bandFilter}
+        GROUP BY time
+        ORDER BY time ASC
+        FORMAT JSON
+    `;
+        const url = `${apiUrl}?query=${encodeURIComponent(query)}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const jsonData = await response.json();
+            console.log(`Returned RAW Data for Band ${bandFilter}:`, jsonData.data); // Log the data for debugging
+
+            // Convert data to a dictionary for quick lookup
+            const dataMap = new Map(jsonData.data.map(entry => [entry.time, parseInt(entry.count, 10)]));
+
+            // Generate the complete time range with 2-minute intervals
+            const completeData = [];
+            const startTime = new Date(now.getTime() - totalHours * 60 * 60 * 1000); // Start time
+            const endTime = new Date(jsonData.data.length > 0 ? jsonData.data[jsonData.data.length - 1].time : now); // End at last entry
+
+            for (let t = new Date(startTime); t <= endTime; t.setMinutes(t.getMinutes() + 2)) {
+                const timestamp = t.toISOString().slice(0, 19).replace('T', ' '); // Format as "YYYY-MM-DD HH:MM:SS"
+                completeData.push({
+                    time: timestamp,
+                    count: dataMap.get(timestamp) || 0 // Use existing count or default to 0
+                });
+            }
+
+            console.log(`Completed Data for Band ${bandFilter}:`, completeData);
+            return completeData;
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            throw error;
+        }
+    }
+
+
+
+
+
+    // Band mapping based on provided rule
+    const bandMap = {
+
+        1: "160 meter Band",
+        3: "80 meter Band",
+        5: "60 meter Band",
+        7: "40 meter Band",
+        10: "30 meter Band",
+        14: "20 meter Band",
+        18: "17 meter Band",
+        21: "15 meter Band",
+        24: "12 meter Band",
+        28: "10 meter Band",
+        50: "6 meter Band",
+    };
+
+    // Define colors for each band
+    const bandColors = {
+        1: "#FF0000",  // Red for 160m
+        3: "#800000",  // Dark Red for 80m
+        7: "#FFA500",  // Orange for 40m
+        10: "#FFFF00", // Yellow for 30m
+        14: "#008000", // Green for 20m
+        18: "#00FF00", // Lime Green for 17m
+        21: "#0000FF", // Blue for 15m
+        24: "#4B0082", // Indigo for 12m
+        28: "#EE82EE", // Violet for 10m
+        50: "#8A2BE2", // Blue Violet for 6m
+
+    };
+
+    function renderChart(data, totalHours, bandKey) {
+        const containerId = `container-band${bandKey}`;
+        const container = document.getElementById(containerId);
+
+        if (!container) {
+            console.error(`Chart container not found for Band ${bandKey}`);
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            console.error(`No data available for Band ${bandKey}`);
+            container.innerHTML = '<p>No data available for this band</p>';
+            return;
+        }
+
+        console.log(`Rendering chart for Band ${bandKey}, Data length: ${data.length}`);
+
+        const formattedData = data.map(item => {
+            const timestamp = new Date(item.time).getTime();
+            const count = parseInt(item.count);
+            if (isNaN(timestamp) || isNaN(count)) {
+                console.warn(`Skipping invalid data point:`, item);
+                return null;
+            }
+            return [timestamp, count];
+        }).filter(point => point !== null).sort((a, b) => a[0] - b[0]);
+
+        if (formattedData.length === 0) {
+            console.error(`No valid data for Band ${bandKey}`);
+            container.innerHTML = '<p>No valid data available for this band</p>';
+            return;
+        }
+
+        console.log(`Formatted data for Band ${bandKey}:`, formattedData.slice(0, 5));
+
+        
+        const totalHits = data.reduce((sum, item) => sum + parseInt(item.count), 0);
+        const formattedHits = totalHits.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+
+        const bandName = bandMap[bandKey]
+            ? `${formattedHits} hits on ${bandMap[bandKey]}`
+            : `${formattedHits} hits on Band ${bandKey}`;
+
+
+        const bandColor = bandColors[bandKey] || "#000000";  // Default to black if no color is set
+
+        Highcharts.chart(containerId, {
+            chart: {type: 'column'},
+            title: {text: bandName},
+            xAxis: {type: 'datetime', title: {text: 'Time'}},
+            yAxis: {title: {text: 'Number of hits'}},
+            series: [{
+                name: 'Count of transmissions',
+                data: formattedData,
+                color: bandColor,  // Assign unique color per band
+                tooltip: {pointFormat: '{point.x:%Y-%m-%d %H:%M:%S}: {point.y} transmissions'}
+            }],
+            legend: {enabled: false},
+            credits: {enabled: false}
+        });
+    }
+
+
+    function updateCharts() {
+        const bandKeys = [];
+
+        if (displayHistogram80meterBand) bandKeys.push(3);
+        if (displayHistogram40meterBand) bandKeys.push(7);
+        if (displayHistogram20meterBand) bandKeys.push(14);
+        if (displayHistogram15meterBand) bandKeys.push(21);
+        if (displayHistogram10meterBand) bandKeys.push(28);
+
+        bandKeys.forEach(bandKey => {
+            fetchData(bandKey, days_back)
+                .then(data => renderChart(data, 24 * days_back, bandKey))
+                .catch(error => {
+                    console.error(`Error fetching data for band ${bandKey}:`, error);
+                });
+        });
+    }
+
+
+    // Render initial charts
+    updateCharts();
+
+    // Add event listeners to checkboxes to change days_back dynamically and update all charts
+    const checkboxes = document.querySelectorAll('.days-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+            if (this.checked) {
+                days_back = parseInt(this.value);
+                checkboxes.forEach(cb => {
+                    if (cb !== this) cb.checked = false;
+                });
+
+                // Re-fetch and update charts with the new days_back value
+                updateCharts();
+            }
+        });
+    });
+
+
+</script>
+        <script>
+    //Histograms
+    if (displayHistogram80meterBand == true) {
+        document.getElementById('container-band3').style.display = 'block';
+    }
+    if (displayHistogram40meterBand == true) {
+        document.getElementById('container-band7').style.display = 'block';
+    }
+    if (displayHistogram20meterBand == true) {
+        document.getElementById('container-band14').style.display = 'block';
+    }
+    if (displayHistogram15meterBand == true) {
+        document.getElementById('container-band21').style.display = 'block';
+    }
+    if (displayHistogram10meterBand == true) {
+        document.getElementById('container-band28').style.display = 'block';
+    }
+
+
+
+</script>
+        <script>
+    // CESIUM MAP
+    if (cesiumAccessToken != "") {
+
+        document.getElementById('cesiumContainer').style.display = 'block';
+
+
+        Cesium.Ion.defaultAccessToken = cesiumAccessToken; // Cesium Ion access token
+
+
+        var viewer = new Cesium.Viewer('cesiumContainer', {
+            timeline: false,   // Hide the time slider
+            animation: false,  // Hide the animation controls
+            navigationHelpButton: false, // Hide the help button for navigation
+            sceneModePicker: false,  // Disable the default scene mode picker
+            geocoder: false,   // Hide the geocoder search bar
+            homeButton: false, // Hide the home button
+            fullscreenButton: false, // Hide the fullscreen button
+            vrButton: false,   // Hide the VR button
+            selectionIndicator: false, // Hide the selection indicator
+            infoBox: false,    // Hide the info box
+            skyBox: false,     // Hide the skybox (the background 3D model)
+            imageryProviderViewModels: [], // Hide imagery provider selection
+            baseLayerPicker: false, // Hide the base layer picker
+            scene3DOnly: false // Allow 2D and Columbus view
+        });
+
+
+        // Center the map at WSPR_tx_Longitude and WSPR_tx_Latitude
+        viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(WSPR_tx_Longitude, WSPR_tx_Latitude, 10000000.0)
+        });
+
+        // Adjust camera to view the line from a good angle
+        viewer.zoomTo(viewer.entities);
+
+    }
+</script>
+    </body>

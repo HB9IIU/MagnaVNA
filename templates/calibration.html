@@ -17,11 +17,18 @@
         <style>#S11ChartContainer { height: 250px; width: 100%; } .toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050; min-width: 300px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none; } .toast-header-success { background-color: #28a745; color: white; border-top-left-radius: 10px; border-top-right-radius: 10px; } .toast-body { font-size: 1rem; text-align: center; }</style>
     </head>
     <body class="d-flex flex-column h-100">
-        <header>
+        <header data-pg-collapsed>
             <!-- Fixed navbar -->
             <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
-                <div class="container">
-                    <h4 class="mx-auto text-white">HB9IIU Magnetic Loop Analyzer</h4>
+                <div class="container-fluid d-flex align-items-center mx-1">
+                    <div class="col-md-2 d-flex align-items-center">
+                        <h4 class="text-white">HB9IIU</h4>
+                    </div>
+                    <div class="col-md-8 d-flex justify-content-center align-items-center">
+                        <h4 class="text-white" style="color: #f00c0c;">Magnetic Loop Antenna Analyzer</h4>
+                    </div>
+                    <div class="align-items-center col-lg-2 col-md-1 d-flex justify-content-end"><a href="https://github.com/HB9IIU" target="_blank"><img src="../static/img/github.png" style="margin-top: -8px; margin-bottom: -8px;" width="30px"> </a>
+                    </div>
                 </div>
             </nav>
         </header>
@@ -82,7 +89,7 @@
             </div>
         </main>
         <footer class="footer mt-auto py-3 bg-light">
-            <div class="container text-center"><span class="text-muted" style="font-size: 18px;">HB9IIU January 2025</span>
+            <div class="container text-center"><span class="text-muted" style="font-size: 18px;">HB9IIU March 2025</span>
             </div>
         </footer>
         <!-- Toast Message -->

@@ -8,33 +8,61 @@ import numpy as np
 from serial.tools import list_ports
 import threading
 from flask import Flask, request, jsonify, render_template
-import logging
 from scipy.signal import savgol_filter
 import webbrowser
 import traceback
 import socket
-global sweepNumber
 global port
 import platform
-sweepNumber = 0
-port=0
+import shutil
+from werkzeug.serving import make_server
+import subprocess
+import logging
+##################################################################
+VERSION="1.1" # 6th March 2025
+
+wide_Sweep_Start_Frequency = 3_000_000
+wide_Sweep_Stop_Frequency = 30_000_000
+wide_Sweep_Number_Of_Points = 500  # Number of points in the sweep
+
+calibration_start_freq = 1_000_000
+calibration_end_freq = 50_000_000
+calibration_points = 2000  # Number of points in the sweep
+
+###################################################################
+
+
+
 # Global Event to signal thread stop
 stop_event = threading.Event()
 
-global wideSweepOngoing
-global narrowSweepOngoing
-global recenteringwideSweepOngoing
-wideSweepOngoing=False
-narrowSweepOngoing=False
-recenteringwideSweepOngoing=False
+firstCenteringSweepCompleted=False #to wait before we go to narrow sweep
 
 
-global calibrationFilesAvailable
-calibrationFilesAvailable=False
+skipFirstWideSweepRequestFromWebPage=True
+
+
+flask_ready = False  # Global flag to indicate when Flask is fully running
+
 
 global ws_frequency_array, ws_s11_db_array, ws_swr_array, ws_min_s11_db, ws_min_swr, ws_freq_at_min_s11, ws_freq_at_min_swr
 global ns_frequency_array, ns_s11_db_array, ns_swr_array, ns_min_s11_db, ns_min_swr, ns_freq_at_min_s11, ns_freq_at_min_swr
+global parallel_R, parallel_X, parallel_L, resonance_impedance, s11_phase_resonance, series_L, series_C, quality_factor, reactance_type
+global NarrowSweepNumber, latest_zoomed_resonance_frequency, narrowSweepOngoing, recenteringWideSweepOngoing
 global f1_2, f2_2, f1_3, f2_3, bw_2, bw_3
+
+wideSweepOngoing=False
+narrowSweepOngoing=False
+recenteringWideSweepOngoing=False
+calibrationFilesAvailable=False
+
+
+VERSION= "Version " + VERSION
+
+
+
+
+
 f1_2, f2_2, f1_3, f2_3, bw_2, bw_3 = 0, 0, 0, 0, 0, 0
 
 ws_frequency_array =  None
@@ -62,7 +90,9 @@ VNA_PID = 0x5740  # NanoVNA PID
 VNA_version_Info=None
 
 
+
 # Get the current system's OS
+print("Possible matplolib error message can be ignored.....")
 current_os = platform.system()
 if current_os == "Darwin":
     print("You are on macOS, the land of stability and no blue screens! 😎")
@@ -96,6 +126,19 @@ else:
     print(f"You are on {current_os}")
     sys.exit()
 
+def copyWSPRconfigFile_NOT_IN_USE():
+    # NEW copy wspr config file
+    config_file = os.path.join(BASE_DIR, 'wsprConfig.cfg')
+    destination_file = os.path.join(template_folder, 'wsprConfig.js')
+    if os.path.exists(config_file):
+        shutil.copy2(config_file, destination_file)  # Overwrites if exists
+        #print(f"Copied '{config_file}' to '{destination_file}' (overwriting if necessary).")
+        print( "[INFO] WSPR config file successfully overwritten.")
+    else:
+        #print(f"File '{config_file}' not found, skipping copy.")
+        print ("[WARNING] WSPR Config file not found, skipping copy.")
+
+
 # --------------------------------------------------
 # Flask Routes
 # --------------------------------------------------
@@ -119,7 +162,9 @@ def index_default():
 def theory():
     return render_template('theory.html')
 
-
+@app.route('/HB9IIUwsprReporter.html')
+def HB9IIUwsprReporter():
+    return render_template('HB9IIUwsprReporter.html')
 
 @app.route('/index.html')
 def index():
@@ -133,11 +178,6 @@ def calibration():
 def verification():
     return render_template('verification.html')
 
-
-
-
-
-
 @app.route('/goodbye.html')
 def goodbye():
     return render_template('goodbye.html')
@@ -145,6 +185,7 @@ def goodbye():
 @app.route('/get_general_configuration_data')
 def return_general_configuration_data():
     data = {
+        'AppVersion': VERSION,
         'wide_Sweep_Start_Frequency': wide_Sweep_Start_Frequency,
         'wide_Sweep_Stop_Frequency': wide_Sweep_Stop_Frequency,
         'wide_Sweep_Number_Of_Points': wide_Sweep_Number_Of_Points,
@@ -165,7 +206,6 @@ def wide_sweep_data():
     }
     return jsonify(data)
 
-
 @app.route('/zoom_data')
 def zoom_data():
     if ns_frequency_array is None:
@@ -183,12 +223,18 @@ def zoom_data():
         'f2_3': f2_3,
         'bw_2': bw_2,
         'bw_3': bw_3,
-        'recenteringwideSweepOngoing': recenteringwideSweepOngoing
+        'recenteringWideSweepOngoing': recenteringWideSweepOngoing,
+        'parallel_R':parallel_R,
+        'parallel_X': parallel_X,
+        'parallel_L': parallel_L,
+        'resonance_impedance': resonance_impedance,
+        's11_phase_resonance': s11_phase_resonance,
+        'series_L': series_L,
+        'series_C': series_C,
+        'quality_factor': quality_factor,
+        'reactance_type': reactance_type
     }
     return jsonify(data)
-
-
-
 
 @app.route('/calibrate_short', methods=['POST'])
 def calibrate_short():
@@ -216,8 +262,13 @@ def calibrate_load():
 
 @app.route('/peform_wide_sweep', methods=['POST'])
 def peform_wide_sweep():
-    centering_wide_sweep();
-    return jsonify({'message': 'Performing wide sweep!'})
+    global skipFirstWideSweepRequestFromWebPage
+    if (skipFirstWideSweepRequestFromWebPage or wideSweepOngoing):
+        skipFirstWideSweepRequestFromWebPage=False
+        return jsonify({'message': 'Skipping 1st Wide Sweep Request!'})
+    else:
+        centering_wide_sweep();
+        return jsonify({'message': 'Performing wide sweep!'})
 
 
 @app.route('/shutdown', methods=['POST'])
@@ -263,7 +314,6 @@ def stop_continuous_sweeping_thread():
         return jsonify({'message': 'Sweeping thread stopped.!'})
     else:
         return jsonify({'message': 'Sweeping thread was already stopped.!'})
-
 
 
 @app.route('/sweep_short', methods=['POST'])
@@ -330,27 +380,34 @@ def verify():
         time.sleep(.1)
 
     nonCalibratedNetwork = sweep_to_non_calibrated_network(start_freq, end_freq, points)
-    calibratedNework = apply_calibration_to_network(nonCalibratedNetwork)
+    calibratedNetwork = apply_calibration_to_network(nonCalibratedNetwork)
 
 
-    return calibratedNework
+    return calibratedNetwork
 
 def print_welcome_message():
-    message = """#
+    message = f"""
     ##############################################################
-    #                                                            #
-    #                   73! de HB9IIU                            #
-    #                                                            #
-    #   This app is open-source and in continuous development.   #
+    #                      73! de HB9IIU                         #
+    #   MagnaVNA is open-source and in continuous development    #
     #           Thank you for testing and using it!              #
-    #                                                            #
     #     For latest news and issues reporting please visit      #
-    #                                                            #
-    #           https://github.com/HB9IIU/MagnaVNA               #
-    #                                                            #
+    #                     VERSION {VERSION}                    #
+    #            https://github.com/HB9IIU/MagnaVNA              #
     ##############################################################
     """
+
     print(message)
+
+# Get the local IP address (IPv4) of the machine
+def get_local_ip():
+    try:
+        # Create a temporary socket and connect to an external server (doesn't actually send data)
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))  # Google's public DNS
+            return s.getsockname()[0]
+    except Exception:
+        return "127.0.0.1"  # Fallback
 
 def get_vna_port() -> str:
     """
@@ -360,7 +417,7 @@ def get_vna_port() -> str:
     device_list = list_ports.comports()
     for device in device_list:
         if device.vid == VNA_VID and device.pid == VNA_PID:
-            print(f"Found NanoVNA on port: {device.device}")
+            print(f"[INFO] Found NanoVNA on port: {device.device}")
             return device.device
     raise OSError("NanoVNA device not found")
 
@@ -374,7 +431,7 @@ def initialize_serial(port: str, baudrate=115200, timeout=5):
     """
     try:
         ser = serial.Serial(port, baudrate, timeout=timeout)
-        print(f"Connected to {port} at {baudrate} baud.")
+        print(f"[INFO] Connected to {port} at {baudrate} baud.")
         return ser
     except serial.SerialException as e:
         print(f"Error opening serial port: {e}")
@@ -423,13 +480,10 @@ def read_response(ser, timeout=15) -> str:
 def get_version_info(ser):
     """
     Send the 'version' command to the NanoVNA to retrieve version information.
-    Args:
-    - ser: The serial object representing the connection to the NanoVNA.
-    Returns:
-    - The version information as a string.
     """
     send_command(ser, 'version')  # Send 'version' command to the NanoVNA
-    return read_response(ser)  # Read and return the response
+    response=read_response(ser)
+    return response # Read and return the response
 
 def set_VNA_calibration_OFF(ser):
     """
@@ -444,11 +498,6 @@ def set_VNA_calibration_OFF(ser):
 
 def resetVNA(ser):
     send_command(ser, 'reset')  # Send 'reset' command to the NanoVNA
-
-
-# --------------------------------------------------
-# Core Functions
-# --------------------------------------------------
 
 def sweep_to_non_calibrated_network(start_freq, end_freq, points, retries=3, delay=2,network_name="NanoVNA_S11_Non_Calibrated"):
 
@@ -523,6 +572,8 @@ def sweep_to_non_calibrated_network(start_freq, end_freq, points, retries=3, del
         print("Failed to retrieve data after multiple retries.")
         return None, 0
 
+
+
 def apply_calibration_to_network(non_calibrated_network: rf.Network,network_name: str = "NanoVNA_S11_Calibrated") -> rf.Network:
     """
     Apply SOL (Short, Open, Load) calibration to a non-calibrated network object.
@@ -571,6 +622,10 @@ def apply_calibration_to_network(non_calibrated_network: rf.Network,network_name
 
     return calibrated_dut
 
+
+
+
+
 def save_network_to_file(network: rf.Network, filename: str, folder_name: str = "CalibrationKit"):
     """
     Save an skrf.Network object to a specified folder.
@@ -589,172 +644,411 @@ def save_network_to_file(network: rf.Network, filename: str, folder_name: str = 
 def centering_wide_sweep():
     global ws_frequency_array, ws_s11_db_array, ws_swr_array, ws_min_s11_db, ws_min_swr, ws_freq_at_min_s11, ws_freq_at_min_swr
     global wideSweepOngoing
-    global recenteringwideSweepOngoing
+    global recenteringWideSweepOngoing
+    global firstCenteringSweepCompleted
 
     # wide sweep
     start_freq = wide_Sweep_Start_Frequency
     end_freq = wide_Sweep_Stop_Frequency
     points =   wide_Sweep_Number_Of_Points
-    print("\nPerforming Wide Sweep (Sweep n°" + str(sweepNumber) + ")")
+    print("\nPerforming Wide Sweep.................")
     while narrowSweepOngoing==True:
         print ("Waiting for ongoing narrow sweep to complete")
         time.sleep(.1)
     wideSweepOngoing=True
     nonCalibratedNetwork = sweep_to_non_calibrated_network( start_freq, end_freq, points)
     wideSweepOngoing=False
-    recenteringwideSweepOngoing=False
-    calibratedNework = apply_calibration_to_network(nonCalibratedNetwork)
-    # data for wide sweep plot
-    ws_frequency_array = calibratedNework.frequency.f
-    ws_s11_db_array = 20 * np.log10(np.abs(calibratedNework.s[:, 0, 0]))
-    # Find the first dip (local minima) in S11 and SWR where SWR < swr_threshold
-    min_idx = np.argmin(ws_s11_db_array)
-    ws_freq_at_min_s11 = ws_frequency_array[min_idx]
-    ws_min_s11_db = ws_s11_db_array[min_idx]
+    recenteringWideSweepOngoing=False
+    calibratedNetwork = apply_calibration_to_network(nonCalibratedNetwork)
+    #calibratedNetwork=nonCalibratedNetwork
+    resonance_idx = np.argmin(calibratedNetwork.s_mag[:, 0, 0])  # Index of min S11 magnitude
+    ws_freq_at_min_s11 = calibratedNetwork.frequency.f[resonance_idx]  # Resonant frequency
+    ws_frequency_array = calibratedNetwork.frequency.f
+    ws_s11_db_array = 20 * np.log10(np.abs(calibratedNetwork.s[:, 0, 0]))
+    print(f"Resonance Frequency according to Wide Sweep: {ws_freq_at_min_s11:_}")
+    firstCenteringSweepCompleted = True
+
+
 
 def continuous_sweeping_thread():
+    """
+    Continuous sweeping function that performs narrow sweeps, extracts key RF parameters,
+    applies smoothing, and updates resonance information.
+    """
+
+    # Global variables for Flask access
     global ws_frequency_array, ws_s11_db_array, ws_swr_array, ws_min_s11_db, ws_min_swr, ws_freq_at_min_s11, ws_freq_at_min_swr
     global ns_frequency_array, ns_s11_db_array, ns_swr_array, ns_min_s11_db, ns_min_swr, ns_freq_at_min_s11, ns_freq_at_min_swr
-    global sweepNumber
-    global latest_zoomed_resonance_frequency
-    global narrowSweepOngoing
-    global recenteringwideSweepOngoing
+    global parallel_R, parallel_X, parallel_L, resonance_impedance, s11_phase_resonance, series_L, series_C,quality_factor
+    global NarrowSweepNumber, latest_zoomed_resonance_frequency, narrowSweepOngoing, recenteringWideSweepOngoing, reactance_type
     global f1_2, f2_2, f1_3, f2_3, bw_2, bw_3
 
-    """Continuous sweeping thread with stop logic."""
-    sweepNumber = 0
-    while not stop_event.is_set():  # Check if stop_event is set
+    # Wait if a wide sweep is ongoing
+    while firstCenteringSweepCompleted==False:
+        print("Waiting for very first wide sweep to complete" )
+        time.sleep(0.5)
+
+
+    NarrowSweepNumber = 0  # Initialize sweep counter
+    #initial Sweep bw
+    FirstSweepBandwidth =1_000_000  # Sweep bandwidth in Hz
+    while not stop_event.is_set():  # Continuous loop unless stopped
         try:
-            bw = 300_000
-            start_freq = ws_freq_at_min_s11 - bw / 2
-            end_freq = ws_freq_at_min_s11 + bw / 2
-            points = 400  # Number of points in the sweep
-            print("\nPerforming Narrow Sweep (Sweep n°" + str(sweepNumber) + ")")
-            while wideSweepOngoing == True:
-                print("Waiting for ongoing wide sweep to complete")
-                time.sleep(.1)
-            narrowSweepOngoing = True
+            # Define sweep parameters
+            if NarrowSweepNumber==0:
+                start_freq = ws_freq_at_min_s11 - FirstSweepBandwidth / 2
+                end_freq = ws_freq_at_min_s11 + FirstSweepBandwidth / 2
+                points = 600  # Number of points in the sweep
+            else:
+                start_freq = resonance_freq - sweepBandwidth / 2
+                end_freq = resonance_freq + sweepBandwidth / 2
+                points = 400  # Number of points in the sweep
+
+            print(f"\nPerforming Narrow Sweep (Sweep n°{NarrowSweepNumber})")
+
+            # Wait if a wide sweep is ongoing
+            while wideSweepOngoing:
+                print("Waiting for ongoing wide sweep to complete...")
+                time.sleep(0.1)
+
+            # Start narrow sweep
+            narrowSweepOngoing = True # used for Flask not erturning data
             nonCalibratedNetwork = sweep_to_non_calibrated_network(start_freq, end_freq, points)
             narrowSweepOngoing = False
-            calibratedNework = apply_calibration_to_network(nonCalibratedNetwork)
-            # Extract the frequency array (in Hz) from the calibrated network object
-            # This represents the frequency points of the sweep
-            ns_frequency_array = calibratedNework.frequency.f
 
-            # Compute the S11 parameter in decibels (dB)
-            # S11 represents the reflection coefficient, and we convert its magnitude to dB
-            # Formula: 20 * log10(|S11|), where |S11| is the magnitude of the complex S11 parameter
-            ns_s11_db_array = 20 * np.log10(np.abs(calibratedNework.s[:, 0, 0]))
+            # Apply calibration to measurement
+            calibratedNetwork = apply_calibration_to_network(nonCalibratedNetwork)
+            #calibratedNetwork=nonCalibratedNetwork
+            # Extract frequency array (Hz) and impedance (Z = R + jX)
+            ns_frequency_array = calibratedNetwork.frequency.f
+            Z = calibratedNetwork.z[:, 0, 0]  # Complex impedance array
+            R, X = Z.real, Z.imag  # Extract real and imaginary parts
 
-            # Compute the Standing Wave Ratio (SWR) for the same frequency points
-            # SWR is derived from the S11 reflection coefficient and is accessed via the skrf property 's_vswr'
-            ns_swr_array = calibratedNework.s_vswr[:, 0, 0]
+            # Identify the resonance point (minimum S11)
+            min_idx = np.argmin(calibratedNetwork.s_mag[:, 0, 0])
+            resonance_freq = int(ns_frequency_array[min_idx] ) # Frequency at resonance (Hz)
+            print(f"Resonance Frequency from min S11: {resonance_freq:,d} Hz")
 
-            # --- Step 1: Apply Savitzky-Golay Filtering to Smooth the Data ---
-            # Smooth the SWR and S11 data to reduce noise while preserving the shape of the curve
-            # window_length: Must be odd and >= the number of data points; polyorder: Degree of the polynomial to fit
-            ns_swr_array = savgol_filter(ns_swr_array, window_length=21, polyorder=3)
-            ns_s11_db_array = savgol_filter(ns_s11_db_array, window_length=21, polyorder=3)
+            resonance_R = R[min_idx]  # Resistance at resonance
+            resonance_X = X[min_idx]  # Reactance at resonance
+            reactance_type = "Inductive" if resonance_X > 0 else "Capacitive"
 
-            # --- Step 2: Slice Arrays to Include Only SWR <= 4 ---
-            # Create a boolean mask for SWR values <= 4
+            # Format impedance string at resonance
+            resonance_impedance = f"{resonance_R:.1f} {'+' if resonance_X >= 0 else '-'} j {abs(resonance_X):.1f} Ω"
 
-            valid_indices = ns_swr_array <= 4.5
+            # Compute S11 phase in degrees at resonance
+            s11_complex = calibratedNetwork.s[:, 0, 0]  # Extract S11 as complex numbers
+            s11_phase_array = np.angle(s11_complex, deg=True)
+            s11_phase_resonance = s11_phase_array[min_idx]
 
-            # Slice frequency, SWR, and S11 arrays based on the mask
-            # This filters out data points where SWR > 4
-            ns_frequency_array = ns_frequency_array[valid_indices]
-            ns_swr_array = ns_swr_array[valid_indices]
-            ns_s11_db_array = ns_s11_db_array[valid_indices]
+            # Compute Series Inductance (L) or Capacitance (C)
+            if resonance_X > 0:  # Inductive reactance
+                series_L = (resonance_X / (2 * np.pi * resonance_freq)) * 1e9  # Convert to nH
+                series_C = None
+            else:  # Capacitive reactance
+                series_C = (1 / (2 * np.pi * resonance_freq * abs(resonance_X))) * 1e9  # Convert to nF
+                series_L = None
+
+            # Compute Parallel Resistance (Rp) and Parallel Reactance (Xp)
+            parallel_R = resonance_R * (1 + (resonance_X / resonance_R) ** 2)
+            parallel_X = (resonance_X * resonance_R ** 2) / (resonance_R ** 2 + resonance_X ** 2)
+            parallel_L = (parallel_X / (2 * np.pi * resonance_freq)) * 1e6  # Convert to µH
+
+            # Compute Return Loss (RL) in dB
+            return_loss = -20 * np.log10(np.abs(calibratedNetwork.s[min_idx, 0, 0]))
+
+            # Print extracted parameters
+            # print(f"Return Loss at resonance: {return_loss:.2f} dB")
+            #print(f"Impedance at resonance: {resonance_impedance}")
+            #print(f"S11 Phase at resonance: {s11_phase_resonance:.2f}°")
+
+            if series_L is not None:
+                print(f"Series L: {series_L:.3f} nH")
+            elif series_C is not None:
+                print(f"Series C: {series_C:.4f} nF")
+
+            #print(f"Parallel R: {parallel_R:.3f} Ω")
+            #print(f"Parallel X: {parallel_L:.4f} µH")  # Converted from Xp
+
+            # Apply Savitzky-Golay filter for smoothing SWR and S11
+            window_length = min(21, len(ns_frequency_array) - 1)  # Ensure valid window size
+            window_length = window_length - 1 if window_length % 2 == 0 else window_length  # Ensure it's odd
+            ns_s11_db_array = savgol_filter(20 * np.log10(np.abs(calibratedNetwork.s[:, 0, 0])), window_length, polyorder=3)
+
+            ns_swr_array = savgol_filter(calibratedNetwork.s_vswr[:, 0, 0], window_length, polyorder=3)
+            ns_min_swr = np.min(ns_swr_array)
+
+            # Get the index of the minimum SWR
+            min_swr_index = np.argmin(ns_swr_array)
+            #print(f"SWR: {ns_min_swr}")
+
+            #print(f"Index of minimum SWR: {min_swr_index}")
+            ns_freq_at_min_s11 = int(ns_frequency_array[min_swr_index] ) # Frequency at resonance (Hz)
+
+            # Bandwidth calculations at SWR thresholds 3:1 and 2:1
+            def compute_bandwidth(swr_threshold):
+                indices = ns_swr_array <= swr_threshold
+                if np.any(indices):
+                    f_low, f_high = ns_frequency_array[indices][0], ns_frequency_array[indices][-1]
+                    return f_low, f_high, f_high - f_low
+                return None, None, 0
+            f1_3, f2_3, bw_3 = compute_bandwidth(3)  # SWR 3:1
+            f1_2, f2_2, bw_2 = compute_bandwidth(2)  # SWR 2:1
+            f1_forSweepBW, f2_forSweepBW, bw_forSweepBW = compute_bandwidth(4.5) # SWR 4.5:1  will be used for next sweep definition
+
+            # Check if all the values are valid
+
+            if f1_3 is not None and f2_3 is not None and bw_3 > 0:
+                print(f"SWR 3:1 -> BW = {bw_3 / 1e3:.2f} kHz, Range: {f1_3 / 1e6:.3f} - {f2_3 / 1e6:.3f} MHz")
+            else:
+                print("No valid frequency range found for SWR 3:1")
+
+            if f1_2 is not None and f2_2 is not None and bw_2 > 0:
+                print(f"SWR 2:1 -> BW = {bw_2 / 1e3:.2f} kHz, Range: {f1_2 / 1e6:.3f} - {f2_2 / 1e6:.3f} MHz")
+            else:
+                print("No valid frequency range found for SWR 2:1")
+
+            if bw_forSweepBW > 0:
+                print(f"SWR 5:1 -> BW = {bw_forSweepBW / 1e3:.2f} kHz, Range: {f1_forSweepBW / 1e6:.3f} - {f2_forSweepBW / 1e6:.3f} MHz")
+            else:
+                print("No valid frequency range found for SWR 4.5:1")
+                recenteringWideSweepOngoing = True
+                centering_wide_sweep()
+                resonance_freq=ws_freq_at_min_s11
+                sweepBandwidth = FirstSweepBandwidth
+                continue
 
 
-            # --- Step 3: Find the Minimum S11 (Local Minima in dB) ---
-            # Find the index of the minimum S11 value in the filtered data
-            # This identifies the best-matched condition, where the reflection coefficient is minimized
-            min_idx = np.argmin(ns_s11_db_array)
+            # Compute Quality Factor using bandwidth at SWR 2:1
+            quality_factor = resonance_freq / bw_2 if bw_2 > 0 else None
+            if quality_factor is not None:
+                print(f"Quality Factor (Q): {quality_factor:.3f}")
 
-            # Retrieve the minimum S11 value (in dB) at the identified index
-            ns_min_s11_db = ns_s11_db_array[min_idx]
 
-            # Retrieve the frequency (in Hz) corresponding to the minimum S11 value
-            ns_freq_at_min_s11 = ns_frequency_array[min_idx]
 
-            # Retrieve the SWR value at the same index where S11 is minimum
-            # This indicates the SWR at the best-matched condition
-            ns_min_swr = ns_swr_array[min_idx]
 
-            # Retrieve the frequency (in Hz) corresponding to the minimum SWR value
-            # Since the index for minimum S11 and SWR are the same, this value is identical to ns_freq_at_min_s11
-            ns_freq_at_min_swr = ns_frequency_array[min_idx]
+            # Round values for Flask display
+            parallel_R = round(parallel_R, 2)
+            parallel_X = round(parallel_X, 2)
+            parallel_L = round(parallel_L, 4)
+            s11_phase_resonance = round(s11_phase_resonance, 1)
+            series_L = round(series_L, 3) if series_L is not None else None
+            series_C = round(series_C, 4) if series_C is not None else None
+            ns_min_swr= round(ns_min_swr, 1)
+            quality_factor=round(quality_factor, 0)
 
-            # Bandwith calcualtions
-            # Define SWR threshold
-            swr_threshold = 3  # 3:1 SWR
-            # Identify valid indices where SWR <= threshold
-            valid_indices = ns_swr_array <= swr_threshold
-            # Use valid_indices to extract the filtered frequencies and SWR
-            filtered_frequencies = ns_frequency_array[valid_indices]
-            filtered_swr = ns_swr_array[valid_indices]
-            # f1 and f2 are the first and last frequencies in the filtered range
-            f1_3 = filtered_frequencies[0] if len(filtered_frequencies) > 0 else None
-            f2_3 = filtered_frequencies[-1] if len(filtered_frequencies) > 0 else None
-            # Calculate bandwidth
-            bw_3 = f2_3 - f1_3 if f1_3 is not None and f2_3 is not None else 0
-            print(f"SWR {swr_threshold}: f1 = {f1_3} Hz, f2 = {f2_3} Hz, BW = {bw_3} Hz")
+            # data for used by Flask
+            print("\n--- Values returned by Flask ---")
+            print(f"Parallel R (parallel_R): {parallel_R} Ω")
+            print(f"Parallel X (parallel_X): {parallel_X} Ω")
+            print(f"Parallel L (parallel_L): {parallel_L} µH")
+            print(f"Impedance at Resonance (resonance_impedance): {resonance_impedance}")
+            print(f"S11 Phase at Resonance (s11_phase_resonance): {s11_phase_resonance}°")
+            print(f"Series L (series_L): {series_L} nH" if series_L is not None else "Series L: N/A")
+            print(f"Series C (series_C): {series_C} nF" if series_C is not None else "Series C: N/A")
+            print(f"SWR (ns_min_swr): {ns_min_swr}")
 
-            # Define SWR threshold
-            swr_threshold = 2  # 3:1 SWR
-            # Identify valid indices where SWR <= threshold
-            valid_indices = ns_swr_array <= swr_threshold
-            # Use valid_indices to extract the filtered frequencies and SWR
-            filtered_frequencies = ns_frequency_array[valid_indices]
-            filtered_swr = ns_swr_array[valid_indices]
-            # f1 and f2 are the first and last frequencies in the filtered range
-            f1_2 = filtered_frequencies[0] if len(filtered_frequencies) > 0 else None
-            f2_2 = filtered_frequencies[-1] if len(filtered_frequencies) > 0 else None
-            # Calculate bandwidth
-            bw_2 = f2_2 - f1_2 if f1_2 is not None and f2_2 is not None else 0
-            print(f"SWR {swr_threshold}: f1 = {f1_2} Hz, f2 = {f2_2} Hz, BW = {bw_2} Hz")
+            # Use the already computed minimum SWR index
+            # Use the already computed minimum SWR index
+            # Use the already computed minimum SWR index
+            # Use the already computed minimum SWR index
+            resonance_index = min_swr_index  # Index of minimum SWR
+            resonance_freq = ns_freq_at_min_s11  # Resonance frequency (Hz), already extracted
 
-            # Find the updated resonance frequency
-            latest_zoomed_resonance_frequency = int(ns_freq_at_min_s11)
-            ws_freq_at_min_s11 = latest_zoomed_resonance_frequency
-            sweepNumber += 1
-            print("Sweep:", sweepNumber, "completed")
+            # Adjustable thresholds
+            FINAL_SWR_THRESHOLD = 4.0  # Final zoom-in threshold
+
+            # Step 1: Get Total Points Before Any Slicing
+            NumberOfPointsBeforeFiltering = len(ns_swr_array)
+            lowest_swr_index = np.argmin(ns_swr_array)  # Index of lowest SWR value
+
+            # 🔹 Print initial data
+            print(f"[DEBUG] Before Broad Slice - SWR: {ns_swr_array[0]:.1f}  <--> {ns_swr_array[-1]:.1f}")
+            print(f"[INFO] Total Points Before Slicing: {NumberOfPointsBeforeFiltering}")
+            print(
+                f"[DEBUG] Lowest SWR before slicing: {ns_swr_array[lowest_swr_index]:.1f} at index {lowest_swr_index}")
+
+            # **Step 1: Centering**
+            half_size = NumberOfPointsBeforeFiltering // 2
+            start_index = max(lowest_swr_index - half_size, 0)
+            end_index = min(lowest_swr_index + half_size, NumberOfPointsBeforeFiltering - 1)
+
+            # Slice the arrays to center around the lowest SWR
+            ns_frequency_array = ns_frequency_array[start_index:end_index + 1]
+            ns_swr_array = ns_swr_array[start_index:end_index + 1]
+            ns_s11_db_array = ns_s11_db_array[start_index:end_index + 1]
+
+            # Compute new size
+            new_lowest_swr_index = np.argmin(ns_swr_array)
+            points_left = new_lowest_swr_index
+            points_right = len(ns_swr_array) - new_lowest_swr_index - 1
+
+            # 🔹 Print after centering
+            print(f"[DEBUG] After Centering - SWR: {ns_swr_array[0]:.1f}  <--> {ns_swr_array[-1]:.1f}")
+            print(f"[INFO] Centered Array Points: {points_left} <-|-> {points_right}")
+
+            # **Step 2: Zooming (Trimming symmetrically)**
+            while points_left > 0 and points_right > 0:
+                # Stop trimming if either edge has reached SWR 4.2
+                if ns_swr_array[0] <= FINAL_SWR_THRESHOLD or ns_swr_array[-1] <= FINAL_SWR_THRESHOLD:
+                    break
+
+                # Remove one point from each side
+                ns_frequency_array = ns_frequency_array[1:-1]
+                ns_swr_array = ns_swr_array[1:-1]
+                ns_s11_db_array = ns_s11_db_array[1:-1]
+
+                # Update new size
+                new_lowest_swr_index = np.argmin(ns_swr_array)
+                points_left = new_lowest_swr_index
+                points_right = len(ns_swr_array) - new_lowest_swr_index - 1
+
+            # **Final Total Points After Slicing**
+            NumberOfPointsAfterFiltering = len(ns_swr_array)
+
+            # 🔹 Print final results
+            print(f"[DEBUG] Final Slice (SWR {FINAL_SWR_THRESHOLD}) - SWR: {ns_swr_array[0]:.1f}  <--> {ns_swr_array[-1]:.1f}")
+            print(f"[INFO] Total Points After Slicing: {NumberOfPointsAfterFiltering}")
+            print(f"[INFO] Left & Right points: {points_left} <-|-> {points_right}")
+
+
+
+
+            sweepBandwidth=bw_forSweepBW*1.2
+
+
+            NarrowSweepNumber += 1
+            print(f"Sweep {NarrowSweepNumber} completed")
+            #time.sleep(5)  for debugging
         except Exception as e:
-            # Log the error with traceback
-            message = f"Error at Sweep number {sweepNumber}:\n{str(e)}\n"
-            traceback_details = traceback.format_exc()
+            print(f"Error durin Sweep number {NarrowSweepNumber}: {e}")
+            print(traceback.format_exc())
 
-            print(message)
-            if "attempt to get argmin of an empty sequence" in message:
-                recenteringwideSweepOngoing=True
-                centering_wide_sweep() # recentering
-            print("Traceback details:")
-            print(traceback_details)
 
-def find_free_port():
-    """Find an available port on the system."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))  # Bind to a random free port
-        return s.getsockname()[1]
 
 def run_flask():
-    global port
-    #time.sleep(2.5) # to allow serial connection to establish
-    port = 5000  # Default port
-    try:
-        # Check if the port is free
+    global port, flask_ready
+    port = 5556  # Default port
+    local_ip = get_local_ip()
+
+    def get_free_port():
+        """Find a free port dynamically."""
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('', 0))  # Bind to any free port
+            return s.getsockname()[1]
+
+    def is_port_in_use(port):
+        """Cross-platform method to check if a port is in use."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+                return False
+            except OSError:
+                return True
+
+    # Step 1: Try port 5555, otherwise find a free port
+    if is_port_in_use(port):
+        print(f"[WARNING] Port {port} is busy. Finding a free port...")
+        port = get_free_port()
+        print(f"[INFO] Switched to available port {port}.")
+    else:
+        print(f"[INFO] Port {port} is free. Using it for Flask.")
+
+    print(f"[INFO] Flask will start on http://{local_ip}:{port}")
+
+    # Step 2: Define a threaded Flask server
+    class FlaskThread(threading.Thread):
+        def __init__(self):
+            threading.Thread.__init__(self)
+            print("[INFO] Initializing Flask server...")
+            self.server = make_server(local_ip, port, app)
+            self.ctx = app.app_context()
+            self.ctx.push()
+            print("[INFO] Flask server initialized successfully.")
+
+        def run(self):
+            global flask_ready
+            print(f"[INFO] Flask is now running on http://{local_ip}:{port}")
+            flask_ready = True  # 🔹 Set the flag when Flask is fully running
+            self.server.serve_forever()
+
+        def shutdown(self):
+            print("[INFO] Shutting down Flask server...")
+            self.server.shutdown()
+            print("[INFO] Flask server has been shut down.")
+
+    # Step 3: Start Flask in a separate thread
+    print("[INFO] Starting Flask server thread...")
+    flask_thread = FlaskThread()
+    flask_thread.start()
+
+    # Step 4: Open the browser only when Flask is ready
+    while not flask_ready:
+        print("\n[INFO] Waiting for Flask to be ready...")
+        time.sleep(0.5)  # Small wait instead of fixed sleep
+
+    print(f"[INFO] Opening Flask web interface in browser: http://{local_ip}:{port}")
+    webbrowser.open(f"http://{local_ip}:{port}")
+
+
+def run_flaskOLD():
+    global port, flask_ready
+    port = 5555  # Default port
+    local_ip = get_local_ip()
+
+    def get_free_port():
+        """Find a free port dynamically."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('', 0))  # Bind to any free port
+            return s.getsockname()[1]
+
+    # Step 1: Try port 5555, otherwise find a free port
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
             s.bind(('127.0.0.1', port))
-    except OSError:
-        # If the port is in use, find a random free port
-        port = find_free_port()
+            print(f"[INFO] Port {port} is free. Using it for Flask.")
+        except OSError:
+            port = get_free_port()
+            print(f"[WARNING] Port 5555 was busy. Switched to {port}")
 
-    print(f"Starting Flask server on port {port}...")
+    print(f"[INFO] Flask will start on http://{local_ip}:{port}")
 
+    from werkzeug.serving import make_server
 
-    app.run(host='127.0.0.1', port=port, debug=True, use_reloader=False)
+    # Step 2: Define a threaded Flask server
+    class FlaskThread(threading.Thread):
+        def __init__(self):
+            threading.Thread.__init__(self)
+            print("[INFO] Initializing Flask server...")
+            self.server = make_server(local_ip, port, app)
+            self.ctx = app.app_context()
+            self.ctx.push()
+            print("[INFO] Flask server initialized successfully.")
+
+        def run(self):
+            global flask_ready
+            print(f"[INFO] Flask is now running on {local_ip}:{port}")
+            flask_ready = True  # 🔹 Set the flag when Flask is fully running
+            self.server.serve_forever()
+
+        def shutdown(self):
+            print("[INFO] Shutting down Flask server...")
+            self.server.shutdown()
+            print("[INFO] Flask server has been shut down.")
+
+    # Step 3: Start Flask in a separate thread
+    print("[INFO] Starting Flask server thread...")
+    flask_thread = FlaskThread()
+    flask_thread.start()
+
+    # Step 4: Open the browser only when Flask is ready
+    while not flask_ready:
+        print("\n[INFO] Waiting for Flask to be ready...")
+        time.sleep(0.5)  # Small wait instead of fixed sleep
+
+    print(f"[INFO] Opening Flask web interface in browser: http://{local_ip}:{port}")
+    webbrowser.open(f"http://{local_ip}:{port}")
+
 
 def checkIfCalibrationFilesExist():
     # List of required calibration files
@@ -763,89 +1057,136 @@ def checkIfCalibrationFilesExist():
     calibrationFilesAvailable = all(
         os.path.exists(os.path.join(calibration_kit_dir, file)) for file in required_files
     )
-    print(f"Calibration files available: {calibrationFilesAvailable}")
     return calibrationFilesAvailable
+
 # --------------------------------------------------
 # Main Program Flow
 # --------------------------------------------------
 ser = None  # Initialize ser as None to avoid issues in the exception handler
 
+
+
 if __name__ == '__main__':
     print_welcome_message()
+    # Copy WSPR config
+    # copyWSPRconfigFile() nex version acia WEBGui
 
     # Check Calibration files
-    calibrationFilesAvailable=checkIfCalibrationFilesExist()
+    calibrationFilesAvailable = checkIfCalibrationFilesExist()
+    print(f"[INFO] Calibration files available: {calibrationFilesAvailable}\n")
 
-    wide_Sweep_Start_Frequency=3_000_000
-    wide_Sweep_Stop_Frequency=30_000_000
-    wide_Sweep_Number_Of_Points=500
-
-    calibration_start_freq = 1_000_000
-    calibration_end_freq = 50_000_000
-    calibration_points = 2000  # Number of points in the sweep
-
-    # Suppress Flask default logging
+    # Suppress Flask logging
     Flasklog = logging.getLogger('werkzeug')
-    Flasklog.setLevel(logging.ERROR)  # Set to ERROR to suppress INFO level logs
+    Flasklog.setLevel(logging.ERROR)
 
-
-    # Start Flask server in a separate thread
+    # Start Flask in a separate thread
+    print("[INFO] Starting Flask web server...")
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
 
-# Find VNA, connect, reset, reconnect
+    # 🔹 Wait until Flask is ready before proceeding
+    while not flask_ready:
+        print("[INFO] Waiting for Flask to be fully ready...")
+        time.sleep(0.5)  # Short wait loop
+    time.sleep(1) # ensure web page has loaded
+    print("[INFO] Flask initialization complete. Proceeding with NanoVNA setup...\n")
+
+    # --- Find and Reset NanoVNA ---
+    ser = None
     while ser is None:
         try:
             serial_port = get_vna_port()  # Auto-detect NanoVNA port
-            ser = initialize_serial(serial_port)  # Initialize the connection
-            send_command(ser,"") #empty command to clear buffer
-            read_response(ser) #empty buffer
-            print("NanoVNA Version Info:", VNA_version_Info)
+            ser = initialize_serial(serial_port)
+            send_command(ser, "\r")  # Sending a carriage return to empty buffer
+            read_response(ser)
+            print("[INFO] Resetting  NanoVNA and trying to re-connect...")
+            resetVNA(ser)
+            ser.close()
         except OSError as e:
-            print(f"Error: {e}")  # Display error when NanoVNA is not found
-            print("NanoVNA device not found. Retrying in 2 seconds.")
+            print(f"[ERROR] {e}")
+            print("[WARNING] NanoVNA device not found. Retrying in 2 seconds...")
             time.sleep(2)
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            if ser:  # Close the serial connection only if it was initialized
+            print(f"[ERROR] Unexpected issue: {e}")
+            if ser:
                 ser.close()
-                print("Serial connection closed.")
-            sys.exit(1)  # Exit with an error code for unexpected exceptions
-    resetVNA(ser)
-    ser.close()
-    ser=None
+                print("[INFO] Serial connection closed.")
+            sys.exit()
+
+    # --- Reconnect after Reset ---
     time.sleep(1)
+    ser = None
     while ser is None:
         try:
             serial_port = get_vna_port()  # Auto-detect NanoVNA port
-            ser = initialize_serial(serial_port)  # Initialize the connection
-            send_command(ser, "")  # empty command to clear buffer
-            read_response(ser)  # empty buffer
-            VNA_version_Info = get_version_info(ser)  # Retrieve NanoVNA version
-            print("NanoVNA Version Info:", VNA_version_Info)
+            ser = initialize_serial(serial_port)
         except OSError as e:
-            print(f"Error: {e}")  # Display error when NanoVNA is not found
-            print("NanoVNA device not found. Retrying in 2 seconds.")
+            print(f"[ERROR] {e}")
+            print("[WARNING] NanoVNA device not found. Retrying in 2 seconds...")
             time.sleep(2)
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            if ser:  # Close the serial connection only if it was initialized
+            print(f"[ERROR] Unexpected issue: {e}")
+            if ser:
                 ser.close()
-                print("Serial connection closed.")
-            sys.exit(1)  # Exit with an error code for unexpected exceptions
+                print("[INFO] Serial connection closed.")
+            sys.exit(1)
 
+    send_command(ser, '')  # Send '' should return NanoVNA Shell
+    response = read_response(ser)
+    #print(response)
+    VNA_version_Info = get_version_info(ser)
+    print(f"[INFO] NanoVNA Version Info: {VNA_version_Info}\n")
     set_VNA_calibration_OFF(ser)
-    print ("Port:", port)
-    # Automatically open the web page in the default browser
-    webbrowser.open(f"http://127.0.0.1:{port}")
+    centering_wide_sweep()
 
-
-
-
-    # Start the sweep thread if NanoVNA was successfully initialized
+    # --- Start Sweep Thread ---
     sweep_thread = threading.Thread(target=continuous_sweeping_thread)
     sweep_thread.daemon = True
 
     if calibrationFilesAvailable:
-        centering_wide_sweep()
+        print("[INFO] Calibration is available. Continuozs Sweeping started.\n")
         sweep_thread.start()
+
+''' WORK IN PROGRESS
+
+# Sample config data
+config = {
+    "callsign": "HB9IIU",
+    "latitude": "47.3667",
+    "longitude": "8.5500",
+    "cesium_api_key": ""
+}
+
+@app.route('/get_config', methods=['GET'])
+def get_config():
+    return jsonify(config)
+
+@app.route('/save_config', methods=['POST'])
+def save_config():
+    data = request.json
+    config['callsign'] = data.get('callsign', config['callsign'])
+    config['latitude'] = data.get('latitude', config['latitude'])
+    config['longitude'] = data.get('longitude', config['longitude'])
+    config['cesium_api_key'] = data.get('cesium_api_key', config['cesium_api_key'])
+    return jsonify({"status": "success"})
+
+
+
+
+
+'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
