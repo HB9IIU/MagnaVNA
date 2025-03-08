@@ -5,7 +5,7 @@ _pginfo
 .idea
 pinegrow.json
 build
-setup.py
+
 dist
 setupOLD.py
 setupWithConsole.py
