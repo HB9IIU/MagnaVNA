@@ -915,7 +915,7 @@ def VNAconnectOrReconnect():
                 command = "reset\r"
                 ser.write(command.encode('utf-8'))
                 ser.close()
-                time.sleep(3)
+                time.sleep(5)
                 print("[INFO] VNA re-connection")
                 ser = VNAserialComInit(port)
                 command = "\r"
