@@ -19,7 +19,7 @@ from werkzeug.serving import make_server
 import subprocess
 import logging
 ##################################################################
-VERSION="1.1" # 6th March 2025
+VERSION="1.2" # 15th March 2025
 
 wide_Sweep_Start_Frequency = 3_000_000
 wide_Sweep_Stop_Frequency = 30_000_000
@@ -38,24 +38,21 @@ stop_event = threading.Event()
 
 firstCenteringSweepCompleted=False #to wait before we go to narrow sweep
 
-
 skipFirstWideSweepRequestFromWebPage=True
 
-
 flask_ready = False  # Global flag to indicate when Flask is fully running
-
 
 global ws_frequency_array, ws_s11_db_array, ws_swr_array, ws_min_s11_db, ws_min_swr, ws_freq_at_min_s11, ws_freq_at_min_swr
 global ns_frequency_array, ns_s11_db_array, ns_swr_array, ns_min_s11_db, ns_min_swr, ns_freq_at_min_s11, ns_freq_at_min_swr
 global parallel_R, parallel_X, parallel_L, resonance_impedance, s11_phase_resonance, series_L, series_C, quality_factor, reactance_type
 global NarrowSweepNumber, latest_zoomed_resonance_frequency, narrowSweepOngoing, recenteringWideSweepOngoing
 global f1_2, f2_2, f1_3, f2_3, bw_2, bw_3
-
+global disconnectionAlarm
 wideSweepOngoing=False
 narrowSweepOngoing=False
 recenteringWideSweepOngoing=False
 calibrationFilesAvailable=False
-
+disconnectionAlarm=False
 
 VERSION= "Version " + VERSION
 
@@ -82,12 +79,6 @@ ns_freq_at_min_s11 =  None
 ns_freq_at_min_swr =  None
 
 
-# NanoVNA USB IDs
-VNA_VID = 0x0483  # Example VID for STM32-based devices (NanoVNA typically uses this)
-VNA_PID = 0x5740  # NanoVNA PID
-
-# NanoVNA USB IDs
-VNA_version_Info=None
 
 
 
@@ -151,8 +142,9 @@ app = Flask(
 
 
 
-
-
+#------------------------------------------------------------------------
+# ENDPOINTS
+#------------------------------------------------------------------------
 
 @app.route('/')
 def index_default():
@@ -208,6 +200,7 @@ def wide_sweep_data():
 
 @app.route('/zoom_data')
 def zoom_data():
+    global disconnectionAlarm
     if ns_frequency_array is None:
         return jsonify("")
     data = {
@@ -232,8 +225,10 @@ def zoom_data():
         'series_L': series_L,
         'series_C': series_C,
         'quality_factor': quality_factor,
-        'reactance_type': reactance_type
+        'reactance_type': reactance_type,
+        'disconnectionAlarm': disconnectionAlarm
     }
+
     return jsonify(data)
 
 @app.route('/calibrate_short', methods=['POST'])
@@ -269,7 +264,6 @@ def peform_wide_sweep():
     else:
         centering_wide_sweep();
         return jsonify({'message': 'Performing wide sweep!'})
-
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
@@ -315,7 +309,6 @@ def stop_continuous_sweeping_thread():
     else:
         return jsonify({'message': 'Sweeping thread was already stopped.!'})
 
-
 @app.route('/sweep_short', methods=['POST'])
 def sweep_short():
     nonCalibratedNetwork=verify()
@@ -360,6 +353,40 @@ def sweep_load():
         "s11": [{"real": s.real, "imag": s.imag} for s in s11_data]
     }
     return jsonify(response_data), 200
+
+
+#------------------------------------------------------------------------
+# FUNCTIONS
+#------------------------------------------------------------------------
+# --------------------------------------------------
+# GENERATE DUMMY CALIBRATION FILES
+# --------------------------------------------------
+def generate_dummy_calibration_files(start_freq, end_freq, num_points):
+    """Generate dummy calibration files (SHORT, OPEN, LOAD) that have no impact on calibration."""
+    frequencies = np.linspace(start_freq, end_freq, num_points)
+
+    # Generate ideal S-parameters
+    s11_short = -1 * np.ones((num_points, 1, 1))  # SHORT = -1
+    s11_open = 1 * np.ones((num_points, 1, 1))  # OPEN = +1
+    s11_load = 0 * np.ones((num_points, 1, 1))  # LOAD = 0
+
+    # Create scikit-rf Network objects
+    freq_obj = rf.Frequency.from_f(frequencies, unit='Hz')
+
+    short_network = rf.Network(frequency=freq_obj, s=s11_short, name="SHORT")
+    open_network = rf.Network(frequency=freq_obj, s=s11_open, name="OPEN")
+    load_network = rf.Network(frequency=freq_obj, s=s11_load, name="LOAD")
+
+    # Save to files
+    short_network.write_touchstone(os.path.join(calibration_kit_dir, 'SHORT_cal'))
+    open_network.write_touchstone(os.path.join(calibration_kit_dir, 'OPEN_cal'))
+    load_network.write_touchstone(os.path.join(calibration_kit_dir, 'LOAD_cal'))
+
+    print("[INFO] Dummy calibration files created in CalibrationKit folder.")
+
+
+# Example usage:
+# generate_dummy_calibration_files(1_000_000, 50_000_000, 2000)
 
 def verify():
     """Shutdown the Flask server and stop the sweeping thread."""
@@ -409,171 +436,6 @@ def get_local_ip():
     except Exception:
         return "127.0.0.1"  # Fallback
 
-def get_vna_port() -> str:
-    """
-    Automatically detect the NanoVNA serial port by scanning available ports.
-    Returns the port if found, raises OSError if the NanoVNA is not detected.
-    """
-    device_list = list_ports.comports()
-    for device in device_list:
-        if device.vid == VNA_VID and device.pid == VNA_PID:
-            print(f"[INFO] Found NanoVNA on port: {device.device}")
-            return device.device
-    raise OSError("NanoVNA device not found")
-
-def initialize_serial(port: str, baudrate=115200, timeout=5):
-    """
-    Initialize the serial connection with the NanoVNA.
-    Args:
-    - port: The serial port for the NanoVNA.
-    - baudrate: Baud rate for the serial connection (default: 115200).
-    - timeout: Timeout in seconds for the serial connection (default: 5).
-    """
-    try:
-        ser = serial.Serial(port, baudrate, timeout=timeout)
-        print(f"[INFO] Connected to {port} at {baudrate} baud.")
-        return ser
-    except serial.SerialException as e:
-        print(f"Error opening serial port: {e}")
-        return None
-
-def send_command(ser, command: str):
-    if ser is not None:
-        try:
-            ser.write((command + '\r\n').encode())
-            time.sleep(0.1)
-            # print(f"Command sent: {command}")
-        except serial.SerialException as e:
-            print(f"Error sending command: {e}")
-    else:
-        print("Serial connection not established.")
-
-def read_response(ser, timeout=15) -> str:
-    """
-    Read the response from the NanoVNA with a timeout mechanism.
-    Args:
-    - ser: The serial object.
-    - timeout: Time in seconds to wait for the response.
-    Returns the filtered response.
-    """
-    start_time = time.time()
-    response = ""
-
-    if ser is not None:
-        while True:
-            time.sleep(0.1)  # Delay to allow data to accumulate
-            if ser.in_waiting > 0:
-                data = ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
-                response += data
-                if "ch>" in data:  # NanoVNA prompt signals end of response
-                    break
-            if time.time() - start_time > timeout:  # Timeout condition
-                print("Warning: Read timed out")
-                break
-    else:
-        print("Serial connection not established.")
-
-    lines = response.splitlines()
-    filtered_lines = [line for line in lines if not (line.startswith(('version', 'scanraw', 'ch>')))]
-    return '\n'.join(filtered_lines)
-
-def get_version_info(ser):
-    """
-    Send the 'version' command to the NanoVNA to retrieve version information.
-    """
-    send_command(ser, 'version')  # Send 'version' command to the NanoVNA
-    response=read_response(ser)
-    return response # Read and return the response
-
-def set_VNA_calibration_OFF(ser):
-    """
-    Send the 'version' command to the NanoVNA to retrieve version information.
-    Args:
-    - ser: The serial object representing the connection to the NanoVNA.
-    Returns:
-    - The version information as a string.
-    """
-    send_command(ser, 'cal off')  # Send 'version' command to the NanoVNA
-    return read_response(ser)  # Read and return the response
-
-def resetVNA(ser):
-    send_command(ser, 'reset')  # Send 'reset' command to the NanoVNA
-
-def sweep_to_non_calibrated_network(start_freq, end_freq, points, retries=3, delay=2,network_name="NanoVNA_S11_Non_Calibrated"):
-
-    # Split the sweep into chunks of max 100 points
-    max_points = 100
-    frequency_chunks = []
-    current_start = start_freq
-    step_size = int((end_freq - start_freq) / points)
-
-    while current_start < end_freq:
-        chunk_stop = min(current_start + step_size * (max_points - 1), end_freq)
-        chunk_points = int((chunk_stop - current_start) / step_size) + 1
-        frequency_chunks.append((current_start, chunk_stop, chunk_points))
-        current_start = chunk_stop + step_size
-
-    print(f"Total Points: {points}, Frequency Chunks: {len(frequency_chunks)}")
-
-    # Collect data from all chunks
-    all_frequencies = []
-    all_s11_data = []
-
-    start_time = time.time()
-
-    for chunk_start, chunk_stop, chunk_points in frequency_chunks:
-        attempt = 0
-        while attempt < retries:
-            # Send the scan command to the NanoVNA
-            command = f"scan {chunk_start} {chunk_stop} {chunk_points} 3\r\n"
-            send_command(ser, command)
-
-            # Read the response from the NanoVNA
-            response = read_response(ser)
-            #print (response)
-
-            # Parse S11 data from the response
-            data = []
-            frequencies = []
-            for line in response.splitlines():
-                try:
-                    parts = line.split()
-                    freq = float(parts[0])
-                    real = float(parts[1])
-                    imag = float(parts[2])
-                    frequencies.append(freq)
-                    data.append(complex(real, imag))
-                except (ValueError, IndexError):
-                    continue
-
-            if data:
-                # Append parsed data to the overall results
-                all_frequencies.extend(frequencies)
-                all_s11_data.extend(data)
-                break
-            else:
-                print(f"Failed to retrieve data for chunk {chunk_start}-{chunk_stop}. Retrying... (Attempt {attempt + 1}/{retries})")
-                time.sleep(delay)
-                #XXXX
-                resetVNA(ser)
-
-                attempt += 1
-
-    # Create the final Network object
-    if all_frequencies and all_s11_data:
-        frequency_obj = rf.Frequency.from_f(all_frequencies, unit='Hz')
-        s_parameters = np.array(all_s11_data).reshape((-1, 1, 1))
-        network = rf.Network(frequency=frequency_obj, s=s_parameters, name=network_name)
-        end_time = time.time()
-        execution_time = round((end_time - start_time),1)
-        print ("Sweep results:",network, "Execution time:",execution_time, "[s]")
-        return network
-    else:
-        print("Failed to retrieve data after multiple retries.")
-        return None, 0
-
-
-
 def apply_calibration_to_network(non_calibrated_network: rf.Network,network_name: str = "NanoVNA_S11_Calibrated") -> rf.Network:
     """
     Apply SOL (Short, Open, Load) calibration to a non-calibrated network object.
@@ -592,9 +454,9 @@ def apply_calibration_to_network(non_calibrated_network: rf.Network,network_name
     # np.savetxt("frequencies_debug.csv", frequencies, delimiter=",")
 
     # Load measured calibration standards
-    measured_short = rf.Network(os.path.join(calibration_kit_dir, 'SHORT_cal.s1p'))
-    measured_open = rf.Network(os.path.join(calibration_kit_dir, 'OPEN_cal.s1p'))
-    measured_load = rf.Network(os.path.join(calibration_kit_dir, 'LOAD_cal.s1p'))
+    #measured_short = rf.Network(os.path.join(calibration_kit_dir, 'SHORT_cal.s1p'))
+    #measured_open = rf.Network(os.path.join(calibration_kit_dir, 'OPEN_cal.s1p'))
+    #measured_load = rf.Network(os.path.join(calibration_kit_dir, 'LOAD_cal.s1p'))
 
     # Resample the calibration data to match the frequencies of the non-calibrated network
     measured_short_resampled = measured_short.interpolate(frequencies)
@@ -621,10 +483,6 @@ def apply_calibration_to_network(non_calibrated_network: rf.Network,network_name
     calibrated_dut.name = network_name
 
     return calibrated_dut
-
-
-
-
 
 def save_network_to_file(network: rf.Network, filename: str, folder_name: str = "CalibrationKit"):
     """
@@ -668,8 +526,6 @@ def centering_wide_sweep():
     print(f"Resonance Frequency according to Wide Sweep: {ws_freq_at_min_s11:_}")
     firstCenteringSweepCompleted = True
 
-
-
 def continuous_sweeping_thread():
     """
     Continuous sweeping function that performs narrow sweeps, extracts key RF parameters,
@@ -709,16 +565,14 @@ def continuous_sweeping_thread():
             # Wait if a wide sweep is ongoing
             while wideSweepOngoing:
                 print("Waiting for ongoing wide sweep to complete...")
-                time.sleep(0.1)
+                time.sleep(1)
 
             # Start narrow sweep
             narrowSweepOngoing = True # used for Flask not erturning data
             nonCalibratedNetwork = sweep_to_non_calibrated_network(start_freq, end_freq, points)
             narrowSweepOngoing = False
-
             # Apply calibration to measurement
             calibratedNetwork = apply_calibration_to_network(nonCalibratedNetwork)
-            #calibratedNetwork=nonCalibratedNetwork
             # Extract frequency array (Hz) and impedance (Z = R + jX)
             ns_frequency_array = calibratedNetwork.frequency.f
             Z = calibratedNetwork.z[:, 0, 0]  # Complex impedance array
@@ -727,7 +581,6 @@ def continuous_sweeping_thread():
             # Identify the resonance point (minimum S11)
             min_idx = np.argmin(calibratedNetwork.s_mag[:, 0, 0])
             resonance_freq = int(ns_frequency_array[min_idx] ) # Frequency at resonance (Hz)
-            print(f"Resonance Frequency from min S11: {resonance_freq:,d} Hz")
 
             resonance_R = R[min_idx]  # Resistance at resonance
             resonance_X = X[min_idx]  # Reactance at resonance
@@ -756,25 +609,24 @@ def continuous_sweeping_thread():
 
             # Compute Return Loss (RL) in dB
             return_loss = -20 * np.log10(np.abs(calibratedNetwork.s[min_idx, 0, 0]))
-
-            # Print extracted parameters
-            # print(f"Return Loss at resonance: {return_loss:.2f} dB")
-            #print(f"Impedance at resonance: {resonance_impedance}")
-            #print(f"S11 Phase at resonance: {s11_phase_resonance:.2f}°")
+            '''
+            Print extracted parameters
+            print(f"Return Loss at resonance: {return_loss:.2f} dB")
+            print(f"Impedance at resonance: {resonance_impedance}")
+            print(f"S11 Phase at resonance: {s11_phase_resonance:.2f}°")
 
             if series_L is not None:
                 print(f"Series L: {series_L:.3f} nH")
             elif series_C is not None:
                 print(f"Series C: {series_C:.4f} nF")
 
-            #print(f"Parallel R: {parallel_R:.3f} Ω")
-            #print(f"Parallel X: {parallel_L:.4f} µH")  # Converted from Xp
-
+            print(f"Parallel R: {parallel_R:.3f} Ω")
+            print(f"Parallel X: {parallel_L:.4f} µH")  # Converted from Xp
+            '''
             # Apply Savitzky-Golay filter for smoothing SWR and S11
             window_length = min(21, len(ns_frequency_array) - 1)  # Ensure valid window size
             window_length = window_length - 1 if window_length % 2 == 0 else window_length  # Ensure it's odd
             ns_s11_db_array = savgol_filter(20 * np.log10(np.abs(calibratedNetwork.s[:, 0, 0])), window_length, polyorder=3)
-
             ns_swr_array = savgol_filter(calibratedNetwork.s_vswr[:, 0, 0], window_length, polyorder=3)
             ns_min_swr = np.min(ns_swr_array)
 
@@ -784,6 +636,8 @@ def continuous_sweeping_thread():
 
             #print(f"Index of minimum SWR: {min_swr_index}")
             ns_freq_at_min_s11 = int(ns_frequency_array[min_swr_index] ) # Frequency at resonance (Hz)
+            print(f"Resonance Frequency from min returned S11: {resonance_freq:,d} Hz")
+            print(f"Resonance Frequency from min smoothed S11: {ns_freq_at_min_s11:,d} Hz")
 
             # Bandwidth calculations at SWR thresholds 3:1 and 2:1
             def compute_bandwidth(swr_threshold):
@@ -821,10 +675,8 @@ def continuous_sweeping_thread():
 
             # Compute Quality Factor using bandwidth at SWR 2:1
             quality_factor = resonance_freq / bw_2 if bw_2 > 0 else None
-            if quality_factor is not None:
-                print(f"Quality Factor (Q): {quality_factor:.3f}")
-
-
+            #if quality_factor is not None:
+                #print(f"Quality Factor (Q): {quality_factor:.3f}")
 
 
             # Round values for Flask display
@@ -838,6 +690,7 @@ def continuous_sweeping_thread():
             quality_factor=round(quality_factor, 0)
 
             # data for used by Flask
+            '''
             print("\n--- Values returned by Flask ---")
             print(f"Parallel R (parallel_R): {parallel_R} Ω")
             print(f"Parallel X (parallel_X): {parallel_X} Ω")
@@ -847,10 +700,8 @@ def continuous_sweeping_thread():
             print(f"Series L (series_L): {series_L} nH" if series_L is not None else "Series L: N/A")
             print(f"Series C (series_C): {series_C} nF" if series_C is not None else "Series C: N/A")
             print(f"SWR (ns_min_swr): {ns_min_swr}")
+            '''
 
-            # Use the already computed minimum SWR index
-            # Use the already computed minimum SWR index
-            # Use the already computed minimum SWR index
             # Use the already computed minimum SWR index
             resonance_index = min_swr_index  # Index of minimum SWR
             resonance_freq = ns_freq_at_min_s11  # Resonance frequency (Hz), already extracted
@@ -863,10 +714,10 @@ def continuous_sweeping_thread():
             lowest_swr_index = np.argmin(ns_swr_array)  # Index of lowest SWR value
 
             # 🔹 Print initial data
-            print(f"[DEBUG] Before Broad Slice - SWR: {ns_swr_array[0]:.1f}  <--> {ns_swr_array[-1]:.1f}")
-            print(f"[INFO] Total Points Before Slicing: {NumberOfPointsBeforeFiltering}")
+            print(f"Before Broad Slice - SWR: {ns_swr_array[0]:.1f}  <--> {ns_swr_array[-1]:.1f}")
+            print(f"Total Points Before Slicing: {NumberOfPointsBeforeFiltering}")
             print(
-                f"[DEBUG] Lowest SWR before slicing: {ns_swr_array[lowest_swr_index]:.1f} at index {lowest_swr_index}")
+                f"Lowest SWR before slicing: {ns_swr_array[lowest_swr_index]:.1f} at index {lowest_swr_index}")
 
             # **Step 1: Centering**
             half_size = NumberOfPointsBeforeFiltering // 2
@@ -884,8 +735,8 @@ def continuous_sweeping_thread():
             points_right = len(ns_swr_array) - new_lowest_swr_index - 1
 
             # 🔹 Print after centering
-            print(f"[DEBUG] After Centering - SWR: {ns_swr_array[0]:.1f}  <--> {ns_swr_array[-1]:.1f}")
-            print(f"[INFO] Centered Array Points: {points_left} <-|-> {points_right}")
+            print(f"After Centering - SWR: {ns_swr_array[0]:.1f}  <--> {ns_swr_array[-1]:.1f}")
+            print(f"Centered Array Points: {points_left} <-|-> {points_right}")
 
             # **Step 2: Zooming (Trimming symmetrically)**
             while points_left > 0 and points_right > 0:
@@ -907,24 +758,17 @@ def continuous_sweeping_thread():
             NumberOfPointsAfterFiltering = len(ns_swr_array)
 
             # 🔹 Print final results
-            print(f"[DEBUG] Final Slice (SWR {FINAL_SWR_THRESHOLD}) - SWR: {ns_swr_array[0]:.1f}  <--> {ns_swr_array[-1]:.1f}")
-            print(f"[INFO] Total Points After Slicing: {NumberOfPointsAfterFiltering}")
-            print(f"[INFO] Left & Right points: {points_left} <-|-> {points_right}")
-
-
-
-
+            print(f"Final Slice (SWR {FINAL_SWR_THRESHOLD}) - SWR: {ns_swr_array[0]:.1f}  <--> {ns_swr_array[-1]:.1f}")
+            print(f"Total Points After Slicing: {NumberOfPointsAfterFiltering}")
+            print(f"Left & Right points: {points_left} <-|-> {points_right}")
             sweepBandwidth=bw_forSweepBW*1.2
-
-
             NarrowSweepNumber += 1
+            print ()
             print(f"Sweep {NarrowSweepNumber} completed")
             #time.sleep(5)  for debugging
         except Exception as e:
             print(f"Error durin Sweep number {NarrowSweepNumber}: {e}")
             print(traceback.format_exc())
-
-
 
 def run_flask():
     global port, flask_ready
@@ -990,66 +834,6 @@ def run_flask():
     print(f"[INFO] Opening Flask web interface in browser: http://{local_ip}:{port}")
     webbrowser.open(f"http://{local_ip}:{port}")
 
-
-def run_flaskOLD():
-    global port, flask_ready
-    port = 5555  # Default port
-    local_ip = get_local_ip()
-
-    def get_free_port():
-        """Find a free port dynamically."""
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('', 0))  # Bind to any free port
-            return s.getsockname()[1]
-
-    # Step 1: Try port 5555, otherwise find a free port
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        try:
-            s.bind(('127.0.0.1', port))
-            print(f"[INFO] Port {port} is free. Using it for Flask.")
-        except OSError:
-            port = get_free_port()
-            print(f"[WARNING] Port 5555 was busy. Switched to {port}")
-
-    print(f"[INFO] Flask will start on http://{local_ip}:{port}")
-
-    from werkzeug.serving import make_server
-
-    # Step 2: Define a threaded Flask server
-    class FlaskThread(threading.Thread):
-        def __init__(self):
-            threading.Thread.__init__(self)
-            print("[INFO] Initializing Flask server...")
-            self.server = make_server(local_ip, port, app)
-            self.ctx = app.app_context()
-            self.ctx.push()
-            print("[INFO] Flask server initialized successfully.")
-
-        def run(self):
-            global flask_ready
-            print(f"[INFO] Flask is now running on {local_ip}:{port}")
-            flask_ready = True  # 🔹 Set the flag when Flask is fully running
-            self.server.serve_forever()
-
-        def shutdown(self):
-            print("[INFO] Shutting down Flask server...")
-            self.server.shutdown()
-            print("[INFO] Flask server has been shut down.")
-
-    # Step 3: Start Flask in a separate thread
-    print("[INFO] Starting Flask server thread...")
-    flask_thread = FlaskThread()
-    flask_thread.start()
-
-    # Step 4: Open the browser only when Flask is ready
-    while not flask_ready:
-        print("\n[INFO] Waiting for Flask to be ready...")
-        time.sleep(0.5)  # Small wait instead of fixed sleep
-
-    print(f"[INFO] Opening Flask web interface in browser: http://{local_ip}:{port}")
-    webbrowser.open(f"http://{local_ip}:{port}")
-
-
 def checkIfCalibrationFilesExist():
     # List of required calibration files
     required_files = ['LOAD_cal.s1p', 'OPEN_cal.s1p', 'SHORT_cal.s1p']
@@ -1059,17 +843,312 @@ def checkIfCalibrationFilesExist():
     )
     return calibrationFilesAvailable
 
+
+# NEW SERIAL
+
+# NanoVNA USB IDs
+VNA_VID = 0x0483
+VNA_PID = 0x5740
+
+# Initialize global variables
+GUImessage = ""
+VNA_version_Info = ""
+
+# Detect NanoVNA Port
+def VNAgetPort() -> str:
+    global GUImessage
+    GUImessage = "Scanning USB Ports for VNA"
+    print("[INFO] Scanning USB Ports for VNA")
+    device_list = list_ports.comports()
+    for device in device_list:
+        if device.vid is not None and device.pid is not None:
+            print(f"     Device {device.device} has VID {device.vid:04X} : PID {device.pid:04X}")
+        else:
+            print(f"     Device {device.device} has no VID or PID")
+        if device.vid == VNA_VID and device.pid == VNA_PID:
+            print(f"[INFO] Found NanoVNA on port: {device.device}")
+            GUImessage = f"NanoVNA device detected on port {device}"
+            return device.device
+    GUImessage = "No NanoVNA device detected"
+    raise OSError("No NanoVNA device detected")
+# Init NanoVNA Com Port
+def VNAserialComInit(port: str, baudrate=38400, timeout=5):
+    global GUImessage
+    try:
+        ser = serial.Serial(port, baudrate, timeout=timeout)
+        print(f"[INFO] VNA connected to {port} at {baudrate} baud.")
+        GUImessage = f"NanoVNA device connected to port {port}"
+        ser.flush()
+        return ser
+    except serial.SerialException as e:
+        print(f"[ERROR] Error opening serial port: {e}")
+        return None
+
+# Connect or reconnect to NanoVNA
+def VNAconnectOrReconnect():
+    global ser, VNA_version_Info,disconnectionAlarm
+    retry_delay = 1
+    try:
+        ser.close()
+    except NameError:
+        pass  # Do nothing if 'ser' is not defined
+    while True:
+        try:
+            port = VNAgetPort()  # will raise an error if not found
+            ser = VNAserialComInit(port)
+
+            if ser:
+                # clear VNA buffer
+                response = ""
+                command = "\r"
+                responseTest = 0
+                while not "ch" in response:
+                    ser.write(command.encode('utf-8'))
+                    time.sleep(0.2)  # Adjust sleep time as needed
+                    response = ser.read_all().decode('utf-8')
+                    # print("A raw for debug only:", repr(response))
+                    responseTest = responseTest + 1
+                    if responseTest > 10:
+                        disconnectionAlarm=True
+                        print("❌ [ERROR] No response from VNA, unplug & replug")
+                print("[INFO] VNA reset")
+                command = "reset\r"
+                ser.write(command.encode('utf-8'))
+                ser.close()
+                time.sleep(3)
+                print("[INFO] VNA re-connection")
+                ser = VNAserialComInit(port)
+                command = "\r"
+                responseTest = 0
+                while not "ch" in response:
+                    ser.write(command.encode('utf-8'))
+                    time.sleep(0.2)  # Adjust sleep time as needed
+                    response = ser.read_all().decode('utf-8')
+                    # print("A raw for debug only:", repr(response))
+                    responseTest = responseTest + 1
+                    if responseTest > 10:
+                        print("❌ [ERROR] No response from VNA, unplug & replug")
+
+                response = ""
+                command = "\r"
+                while not "ch" in response:
+                    ser.write(command.encode('utf-8'))
+                    time.sleep(0.2)  # Adjust sleep time as needed
+                    response = ser.read_all().decode('utf-8')
+                    # print("A raw for debug only:", repr(response))
+                print("[INFO] Getting VNA firmware version")
+
+                command = "version\r"
+                while not ('version' in response and 'ch>' in response):
+                    ser.write(command.encode('utf-8'))
+                    time.sleep(.2)
+                    response = ser.read_all().decode('utf-8')
+                    print("AX raw for debug only:", repr(response))
+                    time.sleep(0.2)
+
+                # Extract version info using split
+                lines = response.split('\r\n')
+                VNA_version_Info = lines[1] if len(lines) > 1 else None
+                # print(f"Received response: {response}")
+                disconnectionAlarm = False
+
+                print(f"[INFO] VNA version info: {VNA_version_Info}")
+                print(f"✅[INFO] VNA now Ready to Receive Commands")
+                return
+            else:
+                print("[ERROR] Failed to open serial connection.")
+        except Exception as e:
+            print(f"[ERROR] {e}")
+        print(f"[WARNING] Retrying connection in {retry_delay} seconds...")
+        disconnectionAlarm = True
+        time.sleep(retry_delay)
+
+    print("[ERROR] Reconnection failed.")
+
+def VNAexecCommand(cmd, timeout=2):
+    """Send command to NanoVNA and read response until 'ch>' appears."""
+    if ser is None or not ser.is_open:
+        print("[ERROR] Serial connection lost. Attempting to reconnect...")
+        return ""
+
+    try:
+        ser.write(cmd.encode())  # Send to NanoVNA
+        time.sleep(0.05)  # ✅ Small delay after sending command
+        response = ""
+        start_time = time.time()
+
+        while True:
+            if ser is None or not ser.is_open:
+                print("[ERROR] Serial connection lost during command execution.")
+                break
+
+            try:
+                if ser.in_waiting > 0:
+                    response += ser.read(ser.in_waiting).decode('utf-8')
+                    time.sleep(0.01)  # ✅ Small delay after reading data
+
+                    # ✅ Stop if 'ch>' is found at the end (end of data)
+                    if "ch>" in response:
+                        break
+            except OSError as e:
+                print(f"[ERROR] Serial device error: {e}")
+                break
+
+            # ✅ Break on timeout to avoid infinite loop
+            if time.time() - start_time > timeout:
+                print(f"[ERROR] Timeout waiting for response from VNA after {timeout} seconds")
+
+                # ✅ Small delay before retrying reset
+                time.sleep(0.1)
+
+                command = "reset\r"
+                ser.write(command.encode())
+                time.sleep(0.1)  # ✅ Give it time to process the reset
+
+                command = "reset\r"
+                ser.write(command.encode())
+                time.sleep(0.5)  # ✅ Allow VNA to reboot properly
+
+                VNAconnectOrReconnect()
+                return "reconnected"
+
+            # ✅ Small sleep to reduce CPU load
+            time.sleep(0.01)
+
+    except (serial.SerialException, OSError) as e:
+        print(f"[ERROR] Serial communication error: {e}")
+        VNAconnectOrReconnect()
+        return "reconnected"
+
+    return response
+
+def sweep_to_non_calibrated_network(start_freq, end_freq, points):
+    global ser
+    MAX_POINTS = 100  # tested with 400 for NanoVNA H2 but not faster
+    start_freq=int(start_freq)
+    end_freq=int(end_freq)
+    print(f"\n[INFO] Sweeping from {start_freq:,} Hz to {end_freq:,} Hz with max points: {MAX_POINTS:,}")
+
+    step_size = (end_freq - start_freq) // (points - 1)
+    frequency_chunks = []
+    current_start = start_freq
+    total_points = 0
+
+    # Split frequency range into chunks based on MAX_POINTS
+    while total_points < points:
+        chunk_stop = min(current_start + step_size * (MAX_POINTS - 1), end_freq)
+
+        if chunk_stop == end_freq:
+            chunk_points = points - total_points
+        else:
+            chunk_points = min((chunk_stop - current_start) // step_size + 1, MAX_POINTS)
+
+        frequency_chunks.append((current_start, chunk_stop, chunk_points))
+        total_points += chunk_points
+        current_start = chunk_stop + step_size
+
+        if total_points >= points:
+            break
+
+    all_frequencies = []
+    all_s11_data = []
+    start_time = time.time()
+
+    # Process each chunk
+    chunk_number = 0
+    for chunk_start, chunk_stop, chunk_points in frequency_chunks:
+        time.sleep(0)
+        chunk_number += 1
+        print(f"   --> Sweep chunk n°{chunk_number} : from {chunk_start:,} Hz to {chunk_stop:,} Hz  ({chunk_points})")
+
+        # Send the scan command for the current chunk
+        command = f"scan {chunk_start} {chunk_stop} {chunk_points} 3\r"
+        # print(f"[DEBUG] Sending command: {command.strip()}")
+        response = VNAexecCommand(command)
+
+
+
+
+        # ✅ Check for empty response or timeout
+        if "reconnected" in response:
+            return None
+
+        # Debugging the raw response
+        # print(f"[DEBUG] Raw response:\n{response}")
+        # input("Press Enter to continue....")
+        # Split lines and remove leading/trailing spaces
+        lines = response.strip().splitlines()
+
+        # Ignore the first line (command echo)
+        if lines and lines[0].startswith('scan'):
+            lines = lines[1:]
+
+        for line in lines:
+            if 'ch>' in line:  # Stop when end marker is received
+                break
+
+            # print(f"[DEBUG] Parsing line: {line}")
+            try:
+                freq, real, imag = map(float, line.split())
+                if chunk_start <= freq <= chunk_stop:
+                    all_frequencies.append(freq)
+                    all_s11_data.append(complex(real, imag))
+                else:
+                    print(f"⚠️ [WARNING] Ignoring out-of-range frequency: {freq}")
+            except ValueError:
+                print(f"⚠️ [WARNING] Invalid data format: {line.strip()}")
+                continue
+
+
+    # ✅ Adjust the number of points to match the requested count
+    if len(all_frequencies) > points:
+        all_frequencies = all_frequencies[:points]
+        all_s11_data = all_s11_data[:points]
+    elif len(all_frequencies) < points:
+        missing_points = points - len(all_frequencies)
+        last_freq = all_frequencies[-1] if all_frequencies else start_freq
+        step = step_size
+        for _ in range(missing_points):
+            last_freq += step
+            all_frequencies.append(last_freq)
+            all_s11_data.append(all_s11_data[-1] if all_s11_data else complex(0, 0))
+
+    # ✅ After collecting all data, prepare it for scikit-rf Network
+    if all_frequencies and all_s11_data:
+        try:
+            frequency_obj = rf.Frequency.from_f(all_frequencies, unit='Hz')
+            s_parameters = np.array(all_s11_data).reshape((-1, 1, 1))
+            network = rf.Network(frequency=frequency_obj, s=s_parameters)
+            network.name = "non calibrated"
+            # ✅ Save to Touchstone file for validation
+            # network.write_touchstone("sweep_data.s1p")
+
+            elapsed_time = (time.time() - start_time) * 1000
+            print(f"✅{network} successfully created in {elapsed_time:,.0f} ms")
+
+            return network
+        except Exception as e:
+            print(f"[ERROR] Failed to create network: {e}")
+            return None
+    else:
+        print("[ERROR] No valid data collected.")
+        return None
+
+
+
+
 # --------------------------------------------------
 # Main Program Flow
 # --------------------------------------------------
-ser = None  # Initialize ser as None to avoid issues in the exception handler
 
 
 
 if __name__ == '__main__':
     print_welcome_message()
-    # Copy WSPR config
-    # copyWSPRconfigFile() nex version acia WEBGui
+
+    # Example usage:
+    # generate_dummy_calibration_files(1_000_000, 50_000_000, 2000)
+    #sys.exit(0)
 
     # Check Calibration files
     calibrationFilesAvailable = checkIfCalibrationFilesExist()
@@ -1084,6 +1163,11 @@ if __name__ == '__main__':
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
 
+    VNAconnectOrReconnect()
+
+
+
+
     # 🔹 Wait until Flask is ready before proceeding
     while not flask_ready:
         print("[INFO] Waiting for Flask to be fully ready...")
@@ -1091,52 +1175,15 @@ if __name__ == '__main__':
     time.sleep(1) # ensure web page has loaded
     print("[INFO] Flask initialization complete. Proceeding with NanoVNA setup...\n")
 
-    # --- Find and Reset NanoVNA ---
-    ser = None
-    while ser is None:
-        try:
-            serial_port = get_vna_port()  # Auto-detect NanoVNA port
-            ser = initialize_serial(serial_port)
-            send_command(ser, "\r")  # Sending a carriage return to empty buffer
-            read_response(ser)
-            print("[INFO] Resetting  NanoVNA and trying to re-connect...")
-            resetVNA(ser)
-            ser.close()
-        except OSError as e:
-            print(f"[ERROR] {e}")
-            print("[WARNING] NanoVNA device not found. Retrying in 2 seconds...")
-            time.sleep(2)
-        except Exception as e:
-            print(f"[ERROR] Unexpected issue: {e}")
-            if ser:
-                ser.close()
-                print("[INFO] Serial connection closed.")
-            sys.exit()
 
-    # --- Reconnect after Reset ---
-    time.sleep(1)
-    ser = None
-    while ser is None:
-        try:
-            serial_port = get_vna_port()  # Auto-detect NanoVNA port
-            ser = initialize_serial(serial_port)
-        except OSError as e:
-            print(f"[ERROR] {e}")
-            print("[WARNING] NanoVNA device not found. Retrying in 2 seconds...")
-            time.sleep(2)
-        except Exception as e:
-            print(f"[ERROR] Unexpected issue: {e}")
-            if ser:
-                ser.close()
-                print("[INFO] Serial connection closed.")
-            sys.exit(1)
 
-    send_command(ser, '')  # Send '' should return NanoVNA Shell
-    response = read_response(ser)
-    #print(response)
-    VNA_version_Info = get_version_info(ser)
-    print(f"[INFO] NanoVNA Version Info: {VNA_version_Info}\n")
-    set_VNA_calibration_OFF(ser)
+    measured_short = rf.Network(os.path.join(calibration_kit_dir, 'SHORT_cal.s1p'))
+    measured_open = rf.Network(os.path.join(calibration_kit_dir, 'OPEN_cal.s1p'))
+    measured_load = rf.Network(os.path.join(calibration_kit_dir, 'LOAD_cal.s1p'))
+
+
+
+
     centering_wide_sweep()
 
     # --- Start Sweep Thread ---

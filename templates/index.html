@@ -278,6 +278,7 @@
     var series_C;
     var RXLresonance_label = "";
     var recenteringwideSweepOngoing = false;
+    var disconnectionAlarm =false;
 
 
     function formatNumberWithSeparator(value) {
@@ -294,19 +295,6 @@
         window.open('theory.html', '_blank');
     }
 
-    function parseRXLLabel(label) {
-        let match = label.match(/R:\s([\d.]+)\sΩ\s\|\sX:\s([\d.]+)\sΩ\s\|\s(?:L|C):\s([\d.]+)\s(?:µH|pF)/);
-        if (match) {
-            let R = parseFloat(match[1]); // Extract Resistance (R)
-            let X = parseFloat(match[2]); // Extract Reactance (X)
-            let LC = parseFloat(match[3]); // Extract L or C
-
-            return {R, X, LC};
-        } else {
-            console.error("Parsing failed.");
-            return null;
-        }
-    }
 
     function isEqual(obj1, obj2) {
 
@@ -397,7 +385,7 @@
             // x: frequency / 1e6, // Convert to MHz
             //         y: chart.yAxis[1].min + (chart.yAxis[1].max - chart.yAxis[1].min) * 0.8, // 80% of full scale for y
 //y: 3.5, // Adjust position on SWR axis
-            console.log("WWWWWWWWWWWWWWW", (chart.xAxis[0].min + chart.xAxis[0].max) / 2)
+            //console.log("WWWWWWWWWWWWWWW", (chart.xAxis[0].min + chart.xAxis[0].max) / 2)
             chart.customBwAnnotation = chart.addAnnotation({
                 labels: [{
                     useHTML: true, // Enable HTML
@@ -745,17 +733,21 @@
                 enabled: false
             }
         }, {
-            name: 'SWR', // Ensure the name is distinct
+            name: 'SWR',
             yAxis: 1,
             showInLegend: true,
-            color: '#2a9d59',
+            color: '#1ebb3e',
             lineWidth: 2,
-            data: data.swr.map(function (swr, index) {
-                return [data.frequency[index] / 1e6, swr];
-            }),
-            marker: { // Disable markers (dots) for this series
-                enabled: false
-            }
+            data: data.swr
+                .map((swr, index) => {
+                    const freq = data.frequency[index] / 1e6;
+                    if (swr > 1) {
+                        return [freq, swr]; // Only add valid SWR values
+                    }
+                    return null;
+                })
+                .filter(point => point !== null),
+            marker: { enabled: false }
         }];
         // Now check if the chart already exists
         if (narrowSweepChart) {
@@ -815,10 +807,10 @@
                     // Secondary y-axis for SWR
                     title: { text: 'SWR' },
                     opposite: true,
-                    min: 1,
+                    min: 1.0,
                     //max: 4,  // Set max explicitly if needed
                     tickInterval: 0.1, // Explicitly define tick step (change to desired value)
-                    startOnTick: true,
+                    startOnTick: false,
                     endOnTick: true,
                     gridLineColor: '#CCCCCC',
                     gridLineWidth: 1,
@@ -927,6 +919,11 @@
             recenteringWideSweepOngoing = data.recenteringWideSweepOngoing;
             quality_factor = data.quality_factor;
             reactance_type = data.reactance_type;
+            disconnectionAlarm=data.disconnectionAlarm;
+
+
+
+
 
             if (series_L !== null && series_L > 0) {
                 SeriesValue = series_L.toFixed(3);  // Format to 3 decimals
@@ -958,7 +955,15 @@
                 console.log("series_L:", series_L);
                 console.log("series_C:", series_C);
                 console.log("recenteringWideSweepOngoing:", recenteringWideSweepOngoing);
+                console.log("disconnectionAlarm:", disconnectionAlarm);
             }
+
+            if (disconnectionAlarm){
+
+                showToast('Disconnect & Reconnect your VNA', "error");
+
+            }
+
 
             // Trigger Toast if wideSweepOngoing is true
             if (recenteringWideSweepOngoing) {
@@ -1037,7 +1042,7 @@
             }
         }).fail(function (jqXHR, textStatus, errorThrown) {
             console.error("Error fetching data from /zoom_data endpoint:", textStatus, errorThrown);
-            setTimeout(fetchZoomDataAndUpdateChart, 800); // Retry after 800 ms
+            setTimeout(fetchZoomDataAndUpdateChart, 1000); // Retry after 800 ms
         });
     }
 
